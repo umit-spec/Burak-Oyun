@@ -21,7 +21,6 @@ namespace BurakOyun.Core
         public int Score { get; private set; }
 
         public event Action<int> OnScoreChanged;
-        public event Action OnGameStarted;
         /// <summary>(skor, yeni rekor mu)</summary>
         public event Action<int, bool> OnGameOver;
 
@@ -55,7 +54,6 @@ namespace BurakOyun.Core
                 ui.ShowPause(false);
             }
             OnScoreChanged?.Invoke(Score);
-            OnGameStarted?.Invoke();
         }
 
         public void Replay() => StartGame();
