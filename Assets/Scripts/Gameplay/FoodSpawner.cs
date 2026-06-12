@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using BurakOyun.Data;
+using BurakOyun.Core;
 
 namespace BurakOyun.Gameplay
 {
