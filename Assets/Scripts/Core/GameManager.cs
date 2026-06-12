@@ -17,6 +17,7 @@ namespace BurakOyun.Core
         [SerializeField] private SnakeController snake;
         [SerializeField] private FoodSpawner foodSpawner;
         [SerializeField] private UIManager ui;
+        [SerializeField] private Data.GameConfig config;
 
         public GameStateManager State { get; } = new();
         public int Score { get; private set; }

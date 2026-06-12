@@ -463,6 +463,7 @@ namespace BurakOyun.Editor
             SetField(gameMgr, "snake", snakeCtrl);
             SetField(gameMgr, "foodSpawner", foodSpawner);
             SetField(gameMgr, "ui", uiMgr);
+            SetField(gameMgr, "config", config);
 
             // Butonları bağla
             var startBtn = startPanel.GetComponentInChildren<Button>();
