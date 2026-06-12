@@ -183,9 +183,14 @@ namespace BurakOyun.Gameplay
             Renderer r = bodyRenderers[index];
             if (r == null) return;
             if (mpb == null) mpb = new MaterialPropertyBlock();
-            float g = count > 1 ? (float)index / (count - 1) : 0f;
+            
+            // Gezegen renk havuzundan döngüsel renk al
+            Color planetColor = config.planetSegmentColors.Length > 0
+                ? config.planetSegmentColors[index % config.planetSegmentColors.Length]
+                : Color.Lerp(bodyHeadColor, bodyTailColor, (float)index / (count > 0 ? count : 1));
+
             r.GetPropertyBlock(mpb);
-            mpb.SetColor(BaseColorId, Color.Lerp(bodyHeadColor, bodyTailColor, g));
+            mpb.SetColor(BaseColorId, planetColor);
             r.SetPropertyBlock(mpb);
         }
 

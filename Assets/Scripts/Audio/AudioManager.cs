@@ -43,17 +43,39 @@ namespace BurakOyun.Audio
         {
             gameManager.OnScoreChanged += HandleScore;
             gameManager.OnGameOver += HandleGameOver;
+            gameManager.OnWordProgressChanged += HandleWordProgress;
+            gameManager.OnWordCompleted += HandleWordCompleted;
         }
 
         private void OnDisable()
         {
             gameManager.OnScoreChanged -= HandleScore;
             gameManager.OnGameOver -= HandleGameOver;
+            gameManager.OnWordProgressChanged -= HandleWordProgress;
+            gameManager.OnWordCompleted -= HandleWordCompleted;
         }
 
         private void HandleScore(int score)
         {
-            if (score > 0) Play(dingClip); // 0 = oyun başı, ses yok
+            // Normal skorda ding çal, ama harf sesleri zaten HandleWordProgress'te çalacak.
+        }
+
+        private void HandleWordProgress(string word, int letterIndex)
+        {
+            // Harf toplandıysa (başlangıçta 0'dır, her yediğinde artar)
+            if (letterIndex > 0 && letterIndex - 1 < word.Length)
+            {
+                char letter = word[letterIndex - 1];
+                // SfxGenerator'dan dinamik hece sesi üretip çalalım
+                AudioClip letterSound = SfxGenerator.CreateLetterSound(letter);
+                Play(letterSound);
+            }
+        }
+
+        private void HandleWordCompleted(string word)
+        {
+            // Kelime bittiğinde Burak için neşeli bir başarı jingle'ı (applause stili) çalalım
+            Play(applauseClip);
         }
 
         private void HandleGameOver(int score, bool newBest)

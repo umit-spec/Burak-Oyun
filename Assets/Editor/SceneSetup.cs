@@ -46,16 +46,48 @@ namespace BurakOyun.Editor
             const string path = "Assets/Prefabs/SnakeHead.prefab";
             var go = new GameObject("SnakeHead");
 
-            // Yuvarlak sevimli baş (küre). İsim "Cube" kalır — ölüm flaşı bu çocuğu hedefler.
-            var body = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            body.name = "Cube";
+            // Roket kokpiti / ana gövde (silindir yerine konikleşen kapsül)
+            var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            body.name = "Cube"; // Testler ve ölüm feedback'i "Cube" ismindeki renderera bakar
             body.transform.SetParent(go.transform);
-            body.transform.localScale = new Vector3(1.0f, 0.92f, 1.08f); // hafif öne uzun
+            body.transform.localScale = new Vector3(0.75f, 0.75f, 1.35f); // öne doğru uzun mekik yapısı
+            body.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // Yönünü yola doğrult
             body.GetComponent<Renderer>().sharedMaterial =
-                GetOrCreateMaterial("Assets/Prefabs/SnakeHeadMat.mat", new Color(0.22f, 0.80f, 0.40f), 0.25f);
-            Object.DestroyImmediate(body.GetComponent<SphereCollider>());
+                GetOrCreateMaterial("Assets/Prefabs/SnakeHeadMat.mat", new Color(0.92f, 0.25f, 0.25f), 0.45f); // Roket kırmızısı
+            Object.DestroyImmediate(body.GetComponent<CapsuleCollider>());
 
-            // Büyük sevimli gözler — baş, SnakeController tarafından gidiş yönüne (+Z) döndürülür
+            // Sol Roket Kanadı (Wing L)
+            var wingL = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            wingL.name = "WingL";
+            wingL.transform.SetParent(go.transform);
+            wingL.transform.localScale = new Vector3(0.55f, 0.1f, 0.65f);
+            wingL.transform.localPosition = new Vector3(-0.48f, -0.1f, -0.15f);
+            wingL.transform.localRotation = Quaternion.Euler(0f, 0f, -15f);
+            wingL.GetComponent<Renderer>().sharedMaterial =
+                GetOrCreateMaterial("Assets/Prefabs/WingMat.mat", new Color(0.98f, 0.85f, 0.25f), 0.3f);
+            Object.DestroyImmediate(wingL.GetComponent<BoxCollider>());
+
+            // Sağ Roket Kanadı (Wing R)
+            var wingR = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            wingR.name = "WingR";
+            wingR.transform.SetParent(go.transform);
+            wingR.transform.localScale = new Vector3(0.55f, 0.1f, 0.65f);
+            wingR.transform.localPosition = new Vector3(0.48f, -0.1f, -0.15f);
+            wingR.transform.localRotation = Quaternion.Euler(0f, 0f, 15f);
+            wingR.GetComponent<Renderer>().sharedMaterial = wingR.transform.parent.Find("WingL").GetComponent<Renderer>().sharedMaterial;
+            Object.DestroyImmediate(wingR.GetComponent<BoxCollider>());
+
+            // Cam/Vizör (Kozmonot Burak için kokpit camı)
+            var glass = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            glass.name = "Glass";
+            glass.transform.SetParent(go.transform);
+            glass.transform.localScale = new Vector3(0.48f, 0.38f, 0.48f);
+            glass.transform.localPosition = new Vector3(0f, 0.22f, 0.35f);
+            glass.GetComponent<Renderer>().sharedMaterial =
+                GetOrCreateMaterial("Assets/Prefabs/GlassMat.mat", new Color(0.2f, 0.85f, 0.95f), 0.9f); // Parlak uzay camı
+            Object.DestroyImmediate(glass.GetComponent<SphereCollider>());
+
+            // Büyük sevimli gözler (Kanatlardan önde tatlı bir çocuk dostu mekik ifadesi)
             var eyeMat = GetOrCreateMaterial("Assets/Prefabs/EyeMat.mat", Color.white, 0.35f);
             var pupilMat = GetOrCreateMaterial("Assets/Prefabs/PupilMat.mat", new Color(0.10f, 0.10f, 0.13f), 0.1f);
             for (int side = -1; side <= 1; side += 2)
@@ -63,8 +95,8 @@ namespace BurakOyun.Editor
                 var eye = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 eye.name = side < 0 ? "EyeL" : "EyeR";
                 eye.transform.SetParent(go.transform);
-                eye.transform.localScale = Vector3.one * 0.34f;
-                eye.transform.localPosition = new Vector3(side * 0.24f, 0.28f, 0.40f);
+                eye.transform.localScale = Vector3.one * 0.26f;
+                eye.transform.localPosition = new Vector3(side * 0.22f, 0.15f, 0.62f);
                 eye.GetComponent<Renderer>().sharedMaterial = eyeMat;
                 Object.DestroyImmediate(eye.GetComponent<SphereCollider>());
 
@@ -85,15 +117,26 @@ namespace BurakOyun.Editor
         {
             const string path = "Assets/Prefabs/SnakeSegment.prefab";
             var go = new GameObject("SnakeSegment");
-            // Yuvarlak gövde boncuğu (küre). Renk SnakeController'da segment indeksine göre
-            // gradyan ile değiştirilir (MaterialPropertyBlock); buradaki renk yedek.
+            
+            // Gezegen Gövdesi (Küre)
             var body = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            body.name = "Cube";
+            body.name = "Cube"; // SnakeController'daki MPB bu ismi hedef alır
             body.transform.SetParent(go.transform);
             body.transform.localScale = Vector3.one * 0.82f;
             body.GetComponent<Renderer>().sharedMaterial =
                 GetOrCreateMaterial("Assets/Prefabs/SnakeMat.mat", new Color(0.20f, 0.80f, 0.45f), 0.25f);
             Object.DestroyImmediate(body.GetComponent<SphereCollider>());
+
+            // Gezegen Halkası (Satürn stili yatay ince disk)
+            var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            ring.name = "Ring";
+            ring.transform.SetParent(go.transform);
+            ring.transform.localScale = new Vector3(1.35f, 0.02f, 1.35f); // yassı geniş halka
+            ring.transform.localPosition = Vector3.zero;
+            ring.transform.localRotation = Quaternion.Euler(12f, 0f, 8f); // hafif eğik şirin duruş
+            ring.GetComponent<Renderer>().sharedMaterial =
+                GetOrCreateMaterial("Assets/Prefabs/PlanetRingMat.mat", new Color(0.95f, 0.90f, 0.75f, 0.82f), 0.4f);
+            Object.DestroyImmediate(ring.GetComponent<CapsuleCollider>());
 
             PrefabUtility.SaveAsPrefabAsset(go, path);
             Object.DestroyImmediate(go);
@@ -104,36 +147,28 @@ namespace BurakOyun.Editor
             const string path = "Assets/Prefabs/Food.prefab";
             var go = new GameObject("Food");
 
-            // Elma gövdesi (parlak, hafif basık)
-            var apple = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            apple.name = "Apple";
-            apple.transform.SetParent(go.transform);
-            apple.transform.localScale = new Vector3(0.72f, 0.66f, 0.72f);
-            apple.GetComponent<Renderer>().sharedMaterial =
-                GetOrCreateMaterial("Assets/Prefabs/FoodMat.mat", new Color(0.93f, 0.26f, 0.28f), 0.6f);
-            Object.DestroyImmediate(apple.GetComponent<SphereCollider>());
+            // 3D TextMeshPro objesi
+            var textGo = new GameObject("3D_Letter");
+            textGo.transform.SetParent(go.transform);
+            
+            // Burak için kocaman, net okunur harf tasarımı
+            var tmp = textGo.AddComponent<TextMeshPro>();
+            tmp.text = "U"; // varsayılan
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.fontSize = 6.5f;
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.color = new Color(0.12f, 0.85f, 0.98f); // neon gök mavisi harf rengi
+            tmp.outlineColor = new Color32(255, 215, 0, 255); // parıldayan altın sarısı dış hat
+            tmp.outlineWidth = 0.22f;
 
-            // Kahverengi sap (silindir, hafif eğik)
-            var stem = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            stem.name = "Stem";
-            stem.transform.SetParent(go.transform);
-            stem.transform.localScale = new Vector3(0.05f, 0.16f, 0.05f);
-            stem.transform.localPosition = new Vector3(0f, 0.42f, 0f);
-            stem.transform.localRotation = Quaternion.Euler(8f, 0f, -10f);
-            stem.GetComponent<Renderer>().sharedMaterial =
-                GetOrCreateMaterial("Assets/Prefabs/StemMat.mat", new Color(0.45f, 0.30f, 0.16f), 0.2f);
-            Object.DestroyImmediate(stem.GetComponent<CapsuleCollider>());
+            // Ortalanması için pivot ve yükseklik
+            textGo.transform.localPosition = new Vector3(0f, 0f, 0f);
+            textGo.transform.localRotation = Quaternion.Euler(0f, 180f, 0f); // Kameraya düz baksın
 
-            // Yeşil yaprak (basık küre)
-            var leaf = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            leaf.name = "Leaf";
-            leaf.transform.SetParent(go.transform);
-            leaf.transform.localScale = new Vector3(0.28f, 0.05f, 0.16f);
-            leaf.transform.localPosition = new Vector3(0.16f, 0.46f, 0f);
-            leaf.transform.localRotation = Quaternion.Euler(0f, 0f, 25f);
-            leaf.GetComponent<Renderer>().sharedMaterial =
-                GetOrCreateMaterial("Assets/Prefabs/LeafMat.mat", new Color(0.40f, 0.78f, 0.32f), 0.3f);
-            Object.DestroyImmediate(leaf.GetComponent<SphereCollider>());
+            // Yem yeme dedektörü için bir tetikleyici (Trigger) Collider (zaten FoodSpawner tarafından okunur)
+            var col = go.AddComponent<BoxCollider>();
+            col.isTrigger = true;
+            col.size = new Vector3(0.9f, 0.9f, 0.9f);
 
             PrefabUtility.SaveAsPrefabAsset(go, path);
             Object.DestroyImmediate(go);
@@ -411,7 +446,7 @@ namespace BurakOyun.Editor
             // ── UI ──
             var canvas = CreateUICanvas(out var startPanel, out var gameOverPanel,
                 out var scoreTxt, out var bestTxt, out var feedbackTxt, out var gameOverScoreTxt,
-                out var pausePanel, out var pauseBtn);
+                out var pausePanel, out var pauseBtn, out var spellingTxt);
 
             var uiMgr = canvas.AddComponent<UI.UIManager>();
             SetField(uiMgr, "gameManager", gameMgr);
@@ -422,6 +457,7 @@ namespace BurakOyun.Editor
             SetField(uiMgr, "gameOverPanel", gameOverPanel);
             SetField(uiMgr, "gameOverScoreText", gameOverScoreTxt);
             SetField(uiMgr, "pausePanel", pausePanel);
+            SetField(uiMgr, "spellingText", spellingTxt);
 
             // GameManager bağlantıları
             SetField(gameMgr, "snake", snakeCtrl);
@@ -458,7 +494,8 @@ namespace BurakOyun.Editor
         static GameObject CreateUICanvas(
             out GameObject startPanel, out GameObject gameOverPanel,
             out TMP_Text scoreTxt, out TMP_Text bestTxt, out TMP_Text feedbackTxt,
-            out TMP_Text gameOverScoreTxt, out GameObject pausePanel, out Button pauseButton)
+            out TMP_Text gameOverScoreTxt, out GameObject pausePanel, out Button pauseButton,
+            out TMP_Text spellingTxt)
         {
             var canvasGo = new GameObject("UI Canvas");
             var canvas = canvasGo.AddComponent<Canvas>();
@@ -491,6 +528,13 @@ namespace BurakOyun.Editor
                 new Vector2(400f, 80f));
             bestTxt.color = new Color(1f, 1f, 1f, 0.9f);
 
+            // Heceleme Paneli (Üst Orta - Burak'ın ana hedefleri)
+            spellingTxt = CreateTMPText(canvasGo.transform, "SpellingText",
+                "U - Z - A - Y", 72, TextAlignmentOptions.Center,
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -60f),
+                new Vector2(800f, 100f));
+            spellingTxt.color = Color.white;
+
             // Feedback (orta üst)
             feedbackTxt = CreateTMPText(canvasGo.transform, "FeedbackText",
                 "", 64, TextAlignmentOptions.Center,
@@ -515,11 +559,11 @@ namespace BurakOyun.Editor
                 new Vector2(1000f, 220f));
             hint.color = new Color(1f, 0.95f, 0.7f);
 
-            // ── HUD Duraklat butonu (üst orta, her zaman görünür) ──
+            // ── HUD Duraklat butonu (üst sol, skor yazısının yanında, her zaman görünür) ──
             pauseButton = CreateButton(canvasGo.transform, "BtnPause", "II",
-                new Vector2(0.5f, 1f), new Vector2(120f, 90f),
+                new Vector2(0f, 1f), new Vector2(90f, 80f),
                 new Color(0.2f, 0.5f, 0.9f));
-            pauseButton.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, -60f);
+            pauseButton.GetComponent<RectTransform>().anchoredPosition = new Vector2(400f, -60f);
 
             // ── Game Over Panel ──
             gameOverPanel = CreatePanel(canvasGo.transform, "GameOverPanel", new Color(0f, 0f, 0f, 0.5f));

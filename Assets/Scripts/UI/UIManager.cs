@@ -25,14 +25,19 @@ namespace BurakOyun.UI
         private float feedbackTimer;
         private float feedbackScale;
 
+        [Header("Heceleme Modu UI")]
+        [SerializeField] private TMP_Text spellingText;     // kelime ilerleyişi örn: "U Z A [Y]"
+
         private void OnEnable()
         {
             gameManager.OnScoreChanged += HandleScore;
+            gameManager.OnWordProgressChanged += HandleWordProgress;
         }
 
         private void OnDisable()
         {
             gameManager.OnScoreChanged -= HandleScore;
+            gameManager.OnWordProgressChanged -= HandleWordProgress;
         }
 
         private void Start()
@@ -43,6 +48,7 @@ namespace BurakOyun.UI
             RefreshScore(0);
             RefreshBest();
             if (feedbackText != null) feedbackText.text = "";
+            if (spellingText != null) spellingText.text = "";
         }
 
         private void Update()
@@ -89,11 +95,42 @@ namespace BurakOyun.UI
             ShowFeedback(newBest ? "HARİKA!" : "İyi deneme! :)");
         }
 
+        public void ShowOopsFeedback()
+        {
+            ShowFeedback("Oops! Başka Yöne! ✨");
+        }
+
+        private void HandleWordProgress(string word, int letterIndex)
+        {
+            if (spellingText == null) return;
+            
+            // Burak için harfleri okunaklı şekilde aralara tire (-) koyarak gösterelim.
+            // Henüz toplanmamış sıradaki harfi parantez içine [ ] alarak vurgulayalım.
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            for (int i = 0; i < word.Length; i++)
+            {
+                if (i > 0) sb.Append(" - ");
+                if (i < letterIndex)
+                {
+                    sb.Append($"<color=#FFD700>{word[i]}</color>"); // toplanmış harfler altın sarısı
+                }
+                else if (i == letterIndex)
+                {
+                    sb.Append($"<b><color=#00FFFF>[{word[i]}]</color></b>"); // sıradaki harf parlayan turkuaz ve kalın
+                }
+                else
+                {
+                    sb.Append($"<color=#778899>{word[i]}</color>"); // gelecek harfler gri
+                }
+            }
+            spellingText.text = sb.ToString();
+        }
+
         private void HandleScore(int score)
         {
             RefreshScore(score);
             if (score > 0) // 0 = oyun başı
-                ShowFeedback(score % 5 == 0 ? "SÜPER!" : "Aferin!");
+                ShowFeedback(score % 5 == 0 ? "HARİKA! 🚀" : "Aferin! ⭐");
         }
 
         private void RefreshScore(int score)

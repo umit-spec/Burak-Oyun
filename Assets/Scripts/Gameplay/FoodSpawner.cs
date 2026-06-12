@@ -53,6 +53,29 @@ namespace BurakOyun.Gameplay
             if (current == null) current = Instantiate(foodPrefab, transform);
             current.SetActive(true);
             current.transform.position = snake.Grid.CellToWorld(cell, config.cellSize, foodHeight);
+
+            // 3D Harf gösterimini güncelle (TextMeshPro varsa)
+            var tmp = current.GetComponentInChildren<TMPro.TMP_Text>();
+            if (tmp == null) tmp = current.GetComponent<TMPro.TMP_Text>();
+            
+            if (tmp != null)
+            {
+                // GameManager'dan o anki kelimeyi ve harf indeksini çekip yazdır
+                var gm = FindFirstObjectByType<GameManager>();
+                if (gm != null)
+                {
+                    string word = gm.currentWord;
+                    int idx = gm.currentLetterIndex;
+                    if (!string.IsNullOrEmpty(word) && idx < word.Length)
+                    {
+                        tmp.text = word[idx].ToString();
+                    }
+                }
+                else
+                {
+                    tmp.text = "*";
+                }
+            }
         }
 
         /// <summary>Yemi kaldırır (yenince / oyun bitince).</summary>

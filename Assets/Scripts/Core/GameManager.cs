@@ -26,6 +26,14 @@ namespace BurakOyun.Core
 
         public bool IsPaused => State.Current == GameState.Paused;
 
+        [Header("Heceleme Modu (Burak için)")]
+        public string currentWord = "UZAY";
+        public int currentLetterIndex = 0;
+        private int wordListIndex = 0;
+
+        public event Action<string, int> OnWordProgressChanged; // (kelime, hecelenen_harf_sayisi)
+        public event Action<string> OnWordCompleted;
+
         private void OnEnable()
         {
             snake.OnAteFood += HandleAte;
@@ -43,6 +51,16 @@ namespace BurakOyun.Core
         {
             Score = 0;
             State.SetState(GameState.Playing);
+
+            // Rastgele veya sırayla ilk kelimeyi seç
+            if (config != null && config.spellingWords != null && config.spellingWords.Length > 0)
+            {
+                if (currentLetterIndex >= currentWord.Length || string.IsNullOrEmpty(currentWord))
+                {
+                    currentWord = config.spellingWords[wordListIndex];
+                }
+            }
+            
             snake.ResetSnake();
             foodSpawner.Clear();
             foodSpawner.SpawnFood();
@@ -54,9 +72,14 @@ namespace BurakOyun.Core
                 ui.ShowPause(false);
             }
             OnScoreChanged?.Invoke(Score);
+            OnWordProgressChanged?.Invoke(currentWord, currentLetterIndex);
         }
 
-        public void Replay() => StartGame();
+        public void Replay()
+        {
+            currentLetterIndex = 0;
+            StartGame();
+        }
 
         private void Update()
         {
@@ -92,12 +115,63 @@ namespace BurakOyun.Core
         {
             Score++;
             OnScoreChanged?.Invoke(Score);
+            
+            currentLetterIndex++;
+            OnWordProgressChanged?.Invoke(currentWord, currentLetterIndex);
+
             foodSpawner.Clear();
-            if (!foodSpawner.SpawnFood())
-                EndGame(); // tahta tamamen doldu — bu bir zafer, yine de kutlanır :)
+
+            if (currentLetterIndex >= currentWord.Length)
+            {
+                OnWordCompleted?.Invoke(currentWord);
+                StartCoroutine(CelebrationAndNextWord());
+            }
+            else
+            {
+                if (!foodSpawner.SpawnFood())
+                    EndGame();
+            }
         }
 
-        private void HandleDied() => EndGame();
+        private IEnumerator CelebrationAndNextWord()
+        {
+            snake.IsMoving = false;
+            // 2 saniye tebrik ekranı/konfeti sürsün
+            yield return new WaitForSeconds(2.0f);
+
+            // Bir sonraki kelimeye geç
+            if (config != null && config.spellingWords != null && config.spellingWords.Length > 0)
+            {
+                wordListIndex = (wordListIndex + 1) % config.spellingWords.Length;
+                currentWord = config.spellingWords[wordListIndex];
+            }
+            currentLetterIndex = 0;
+
+            StartGame();
+        }
+
+        private void HandleDied()
+        {
+            // 6.5 yaşındaki Burak için tamamen bağışlayıcı: hemen yanmaz!
+            // Geriye seker, uyarı verir ama oyunu bitirmez.
+            if (snake != null)
+            {
+                // Yılanın başını bir adım geriye çekerek sıkışmasını engelleyelim
+                snake.PlayHurtFeedback();
+            }
+            
+            if (ui != null)
+            {
+                // Ekran ortasında tatlı bir uyarı geri bildirimi
+                ui.ShowOopsFeedback();
+            }
+
+            // Harekete devam etmesi içinIsMoving'i tekrar açalım ve yılanı devam ettirelim
+            if (snake != null)
+            {
+                snake.IsMoving = true;
+            }
+        }
 
         private void EndGame()
         {

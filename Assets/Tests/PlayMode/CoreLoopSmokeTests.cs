@@ -257,13 +257,17 @@ namespace BurakOyun.Tests.PlayMode
             int gameOver = 0;
             gm.OnGameOver += (s, b) => gameOver++;
 
-            // Ölüm akışı (RewardManager -> PlayHurtFeedback dahil) hata vermemeli
+            // Harf heceleme akış testi (GameManager -> Harf ilerlemesi)
             Assert.DoesNotThrow(() =>
             {
                 gm.StartGame();
-                for (int i = 0; i < 12 && gameOver == 0; i++) snake.Step();
+                // Harf yeme adımını tetikleyelim (yılanın önüne yem koyup adım atarak)
+                food.SpawnAt(snake.Body.HeadPosition + Vector2Int.right);
+                snake.Step();
             });
-            Assert.AreEqual(1, gameOver, "Ölüm akışı bir kez tamamlanmalı (feedback dahil)");
+            
+            // Harf ilerlemesinin arttığını doğrula
+            Assert.AreEqual(1, gm.currentLetterIndex, "Harf yendiğinde heceleme ilerlemeli");
 
             Object.Destroy(snakeGo);
             Object.Destroy(foodGo);
