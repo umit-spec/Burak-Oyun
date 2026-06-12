@@ -50,6 +50,38 @@ Bu menü şunları kontrol eder ve sonucu bir iletişim kutusunda gösterir:
 
 Tüm kontroller yeşilse **▶ Play basabilirsiniz.**
 
+### CI'nın PASS Alması İçin Git Commit Listesi
+
+Unity kurulumu bittikten sonra şu dosyaların repoda olması şart.  
+Aşağıdaki komutları **terminal**de proje kök klasöründe çalıştır:
+
+```bash
+# 1. Tüm Unity çıktılarını tek seferde ekle
+git add ProjectSettings/           # proje ayarları (IL2CPP, ARM64, sahne listesi...)
+git add Assets/Scenes/             # Game.unity + .meta
+git add Assets/Settings/           # URP-Pipeline.asset + .meta
+git add "Assets/TextMesh Pro/"     # TMP font asset'leri + .meta
+git add Assets/Scripts/            # mevcut .cs için üretilen .meta dosyaları
+git add Assets/Editor/             # editor scriptleri için .meta
+git add Assets/Tests/              # test scriptleri için .meta
+git add Packages/                  # manifest.json değiştiyse
+
+# 2. Commit
+git commit -m "Unity setup: ProjectSettings + assets + .meta dosyaları"
+
+# 3. Push → CI otomatik tetiklenir
+git push
+```
+
+**Ne commit edilmez:**
+
+| Klasör | Neden |
+|--------|-------|
+| `Library/` | Unity cache, her makinede yeniden üretilir |
+| `Temp/` | Build geçicileri |
+| `Builds/` | APK/AAB — CI artifact olarak yüklenir |
+| `UserSettings/` | Kişisel editör tercihleri |
+
 ---
 
 ## 0. Projeyi Aç
