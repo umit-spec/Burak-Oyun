@@ -1,0 +1,160 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# BurakOyun — Android Build & Validation
+#
+# İki iş:
+#   1. validate  — Python ile statik kontrol (Unity gerektirmez, her push'ta çalışır)
+#   2. build     — game-ci/unity-builder ile Android APK (sadece validate geçince)
+#
+# Gerekli GitHub Secrets (repo → Settings → Secrets → Actions):
+#   UNITY_LICENSE  : Unity Personal lisans XML (game-ci/unity-activate çıktısı)
+#   UNITY_EMAIL    : Unity hesap e-postası
+#   UNITY_PASSWORD : Unity hesap şifresi
+#
+# Lisans nasıl alınır: https://game.ci/docs/github/activation
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: Android Build & Validation
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
+# ── JOB 1: Statik Doğrulama ─────────────────────────────────────────────────
+jobs:
+  validate:
+    name: "Static Validation"
+    runs-on: ubuntu-latest
+    outputs:
+      passed: ${{ steps.run.outputs.passed }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run static validator
+        id: run
+        run: |
+          set +e
+          python3 scripts/ci_validate.py | tee validation-report.txt
+          EXIT=${PIPESTATUS[0]}
+          set -e
+
+          {
+            echo "## BurakOyun — Static Validation"
+            echo ""
+            echo '```'
+            cat validation-report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ $EXIT -eq 0 ]; then
+            echo "passed=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          exit $EXIT
+
+      - name: Upload validation report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation-report
+          path: validation-report.txt
+          retention-days: 7
+
+# ── JOB 2: Android APK Build ────────────────────────────────────────────────
+  build:
+    name: "Android APK Build"
+    runs-on: ubuntu-latest
+    needs: validate
+    if: needs.validate.result == 'success'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      # Unity Library klasörünü önbelleğe al (build süresi ~%60 azalır)
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-Android-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-Android-
+            Library-
+
+      # ── Android APK Build (game-ci/unity-builder) ──
+      - name: Build Android APK
+        id: unity_build
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE:  ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL:    ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          # unityVersion: auto → ProjectSettings/ProjectVersion.txt'i okur
+          unityVersion: auto
+          targetPlatform: Android
+          buildName: BurakOyun
+          # .apk çıktısı (Play'e göndermek için sonradan .aab'e geç)
+          androidExportType: androidPackage
+          androidTargetSdkVersion: AndroidApiLevelAuto
+          # İmzasız debug build — CI doğrulaması için yeterli
+          androidKeystoreName: ""
+          androidKeystoreBase64: ""
+          androidKeystorePass: ""
+          androidKeyaliasName: ""
+          androidKeyaliasPass: ""
+
+      # ── APK Artifact ──
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        if: steps.unity_build.outcome == 'success'
+        with:
+          name: BurakOyun-APK-${{ github.sha }}
+          path: build/Android/BurakOyun.apk
+          retention-days: 14
+
+      # ── Build Raporu ──
+      - name: Build report
+        if: always()
+        run: |
+          BUILD="${{ steps.unity_build.outcome }}"
+
+          {
+            echo "## Android Build Raporu"
+            echo ""
+            echo "| Alan | Değer |"
+            echo "|------|-------|"
+            echo "| Unity | auto (ProjectSettings/ProjectVersion.txt) |"
+            echo "| Platform | Android · IL2CPP · ARM64 |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Ref | \`${{ github.ref }}\` |"
+
+            if [ "$BUILD" = "success" ]; then
+              APK="build/Android/BurakOyun.apk"
+              if [ -f "$APK" ]; then
+                SIZE=$(du -sh "$APK" | cut -f1)
+                echo "| APK boyutu | $SIZE |"
+              fi
+              echo ""
+              echo "✅ **Build başarılı.**"
+              echo ""
+              echo "**Artifact:** \`BurakOyun-APK-${{ github.sha }}\`"
+              echo "> Actions → bu workflow çalışması → Artifacts bölümünden indirin."
+            else
+              echo ""
+              echo "❌ **Build başarısız.** Build logunu inceleyin:"
+              echo "- game-ci lisans kurulumu: https://game.ci/docs/github/activation"
+              echo "- \`UNITY_LICENSE\` / \`UNITY_EMAIL\` / \`UNITY_PASSWORD\` secrets doğru mu?"
+              echo "- \`ProjectSettings/ProjectVersion.txt\` Unity sürümünüzle eşleşiyor mu?"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

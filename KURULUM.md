@@ -164,7 +164,62 @@ adb install -r BurakOyun.apk
 - Android geri tuşu şu an oyunu kapatabilir. Çocukların kazara kapatmaması için  
   `GameManager.cs`'e `Application.Quit()` yerine sessiz geri tuşu engeli eklenebilir (ileriki sürüm).
 
-## 5. Sesler
+## 5. GitHub Actions CI (Otomatik Build Doğrulaması)
+
+Her `push` ve `pull_request`'te iki iş çalışır:
+
+```
+validate  → Python statik kontrol (Unity gerekmez)
+build     → Android APK build (validate geçerse, Unity lisansı gerekir)
+```
+
+### Kurulum (bir kez)
+
+**1. Unity Lisansını Secrets'a Ekle**
+
+```
+GitHub Repo → Settings → Secrets and variables → Actions → New repository secret
+```
+
+| Secret adı | Değer |
+|-----------|-------|
+| `UNITY_LICENSE` | game-ci aktivasyon çıktısı (XML) |
+| `UNITY_EMAIL` | Unity hesap e-postası |
+| `UNITY_PASSWORD` | Unity hesap şifresi |
+
+Lisans XML'ini almak için: [game.ci/docs/github/activation](https://game.ci/docs/github/activation)
+
+**2. Unity Sürümünü Güncelle**
+
+`ProjectSettings/ProjectVersion.txt` dosyasındaki sürüm bilgisi, yüklü Unity 6 sürümünüzle eşleşmeli.  
+Unity Hub → Installs'ta görüntülediğiniz sürümü (örn. `6000.0.23f1`) dosyaya yazın ve commit edin.
+
+**3. Kurulum Tamamlandıktan Sonra ProjectSettings'i Commit Et**
+
+```
+# Unity'de tüm kurulum adımlarını yaptıktan sonra:
+git add ProjectSettings/
+git commit -m "Add ProjectSettings after initial Unity setup"
+git push
+```
+
+### CI Çıktıları
+
+| Artifact | İçerik | Süre |
+|---------|---------|------|
+| `validation-report` | PASS/FAIL raporu (txt) | 7 gün |
+| `BurakOyun-APK-<sha>` | Debug APK | 14 gün |
+
+### Beklenen İlk Çalışma Sonucu
+
+```
+Static Validation: 5/11 PASS — 6 FAIL   ← ProjectSettings + sahne kurulmadı
+Android Build:     SKIP                  ← validate geçmeden çalışmaz
+```
+
+Unity kurulumu tamamlanıp `ProjectSettings/` commit edildikten sonra tüm kontroller yeşil olmalı.
+
+## 6. Sesler
 Telefonla kaydet veya ücretsiz kaynak kullan: `Bee!`, `U!`, `Re!`, `A!`, `Ke!` (veya harf adları), `BURAK!`, yumuşak "ding", komik "boing", alkış. `.wav` olarak `Assets/Audio`'ya at, WordData ve AudioManager'a bağla.
 
 ## Güvenlik Hatırlatması
