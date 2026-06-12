@@ -1,0 +1,17 @@
+{
+    "name": "BurakOyun.Tests.PlayMode",
+    "rootNamespace": "BurakOyun.Tests.PlayMode",
+    "references": [
+        "BurakOyun.Runtime",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [],
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "autoReferenced": false
+}

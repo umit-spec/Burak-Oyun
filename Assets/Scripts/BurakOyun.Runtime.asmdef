@@ -1,0 +1,9 @@
+{
+    "name": "BurakOyun.Runtime",
+    "rootNamespace": "BurakOyun",
+    "references": [
+        "Unity.InputSystem",
+        "Unity.TextMeshPro"
+    ],
+    "autoReferenced": true
+}
