@@ -144,6 +144,20 @@ namespace BurakOyun.Editor
         [MenuItem("BurakOyun/3 — Sahneyi Kur (Tüm Objeler)", priority = 3)]
         public static void SetupScene()
         {
+            // TMP Essential Resources kontrolü — font asset yoksa label'lar bozuk görünür
+            string tmpFontDir = System.IO.Path.Combine(Application.dataPath,
+                "TextMesh Pro", "Resources", "Fonts & Materials");
+            bool tmpReady = System.IO.Directory.Exists(tmpFontDir)
+                && System.IO.Directory.GetFiles(tmpFontDir, "*.asset").Length > 0;
+            if (!tmpReady && !EditorUtility.DisplayDialog(
+                "TMP Essential Resources Eksik",
+                "TextMeshPro Essential Resources henüz import edilmemiş.\n\n" +
+                "Harf label'ları bozuk görünebilir.\n\n" +
+                "Önce: Window → TextMeshPro → Import TMP Essential Resources\n\n" +
+                "Yine de devam etmek istiyor musunuz?",
+                "Devam Et", "İptal"))
+                return;
+
             // Önce render pipeline'ı garanti et (yoksa her şey magenta)
             SetupURP();
             // Asset'lerin var olduğundan emin ol

@@ -2,6 +2,56 @@
 
 Tüm C# kodu hazır (`Assets/Scripts`). Bu rehber, Unity editöründe **bir kez elle yapılacak** sahne kurulumunu anlatır. Süre: ~30-45 dk.
 
+---
+
+## İlk Kurulum / Smoke Test
+
+### Neden `ProjectSettings/`, `Library/` ve `.meta` dosyaları yok?
+
+Bu dosyalar Unity'nin projeyi **ilk kez açtığında otomatik oluşturduğu** çıktı dosyalarıdır.  
+Git deposunda kasıtlı olarak bulunmazlar — `.gitignore` ile dışlanmışlardır.  
+Projeyi klonladıktan sonra Unity Hub'dan açana kadar bu klasörler oluşmaz; bu bir hata değil, beklenen durumdur.
+
+### Kurulum Sırası (Bu Sırada Yapılmalı)
+
+```
+1. Unity Hub → Add → repo klasörünü seç → Unity 6 LTS ile aç
+   (İlk açılışta Packages/manifest.json'daki paketler indirilir ve
+    tüm kod derlenir — 2-5 dk sürebilir, konsolda hata olmamalı.)
+
+2. Window → TextMeshPro → Import TMP Essential Resources
+   (Harf label'ları için zorunlu. Bir kez yapılır.)
+
+3. Menü çubuğunda:  BurakOyun → 3 — Sahneyi Kur
+   (URP pipeline + tüm sahne nesneleri + Build Settings otomatik kurulur.)
+
+4. Project panelinde Assets/Scenes/Game.unity'ye çift tıkla.
+
+5. Editor araç çubuğunda ▶ Play → "OYNA" → ok tuşları ile oyna.
+```
+
+### Kurulum Sağlaması — Otomatik Kontrol
+
+Kurulumun doğru olduğundan emin olmak için editörde şunu çalıştır:
+
+```
+BurakOyun → Smoke Test — Editor Check
+```
+
+Bu menü şunları kontrol eder ve sonucu bir iletişim kutusunda gösterir:
+
+| Kontrol | Beklenen |
+|---------|---------|
+| URP Pipeline asset | ✅ `Assets/Settings/URP-Pipeline.asset` var |
+| Sahne dosyası | ✅ `Assets/Scenes/Game.unity` var |
+| TMP Essential Resources | ✅ Font asset'leri import edilmiş |
+| Runtime asmdef referansları | ✅ `Unity.InputSystem` + `Unity.TextMeshPro` |
+| Sahne bileşenleri | ✅ GameManager, SnakeController, WordManager, UIManager mevcut |
+
+Tüm kontroller yeşilse **▶ Play basabilirsiniz.**
+
+---
+
 ## 0. Projeyi Aç
 1. Unity Hub → **Add** → `C:\Burak Oyun` klasörünü seç → Unity **6 LTS** ile aç.
 2. İlk açılışta Unity paketleri (`Packages/manifest.json`) otomatik indirir ve kodu derler. Hata olmamalı.
