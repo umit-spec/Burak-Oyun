@@ -17,12 +17,26 @@ namespace BurakOyun.Audio
         [SerializeField] private AudioClip dingClip;     // yem yendi
         [SerializeField] private AudioClip boingClip;    // çarpma (komik, korkutucu değil)
         [SerializeField] private AudioClip applauseClip; // yeni rekor
+        [SerializeField] private AudioClip musicClip;    // sakin loop (boşsa üretilir)
+
+        [Tooltip("Müzik ses düzeyi — çok düşük, rahatsız etmesin.")]
+        [SerializeField] private float musicVolume = 0.12f;
 
         private void Awake()
         {
             if (dingClip == null) dingClip = SfxGenerator.CreateDing();
             if (boingClip == null) boingClip = SfxGenerator.CreateBoing();
             if (applauseClip == null) applauseClip = SfxGenerator.CreateApplause();
+            if (musicClip == null) musicClip = SfxGenerator.CreateMusicLoop();
+        }
+
+        private void Start()
+        {
+            if (musicSource == null) return;
+            musicSource.clip = musicClip;
+            musicSource.loop = true;
+            musicSource.volume = musicVolume; // çok düşük
+            musicSource.Play();
         }
 
         private void OnEnable()

@@ -44,36 +44,35 @@ namespace BurakOyun.Editor
         static void CreateHeadPrefab()
         {
             const string path = "Assets/Prefabs/SnakeHead.prefab";
-            if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null) return;
-
             var go = new GameObject("SnakeHead");
 
-            var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cube.name = "Cube";
-            cube.transform.SetParent(go.transform);
-            cube.transform.localScale = Vector3.one * 0.95f;
-            cube.GetComponent<Renderer>().sharedMaterial =
-                GetOrCreateMaterial("Assets/Prefabs/SnakeHeadMat.mat", new Color(0.15f, 0.65f, 0.25f));
-            Object.DestroyImmediate(cube.GetComponent<BoxCollider>());
+            // Yuvarlak sevimli baş (küre). İsim "Cube" kalır — ölüm flaşı bu çocuğu hedefler.
+            var body = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            body.name = "Cube";
+            body.transform.SetParent(go.transform);
+            body.transform.localScale = new Vector3(1.0f, 0.92f, 1.08f); // hafif öne uzun
+            body.GetComponent<Renderer>().sharedMaterial =
+                GetOrCreateMaterial("Assets/Prefabs/SnakeHeadMat.mat", new Color(0.22f, 0.80f, 0.40f), 0.25f);
+            Object.DestroyImmediate(body.GetComponent<SphereCollider>());
 
-            // Sevimli gözler — baş, SnakeController tarafından gidiş yönüne (+Z) döndürülür
-            var eyeMat = GetOrCreateMaterial("Assets/Prefabs/EyeMat.mat", Color.white);
-            var pupilMat = GetOrCreateMaterial("Assets/Prefabs/PupilMat.mat", Color.black);
+            // Büyük sevimli gözler — baş, SnakeController tarafından gidiş yönüne (+Z) döndürülür
+            var eyeMat = GetOrCreateMaterial("Assets/Prefabs/EyeMat.mat", Color.white, 0.35f);
+            var pupilMat = GetOrCreateMaterial("Assets/Prefabs/PupilMat.mat", new Color(0.10f, 0.10f, 0.13f), 0.1f);
             for (int side = -1; side <= 1; side += 2)
             {
                 var eye = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 eye.name = side < 0 ? "EyeL" : "EyeR";
                 eye.transform.SetParent(go.transform);
-                eye.transform.localScale = Vector3.one * 0.28f;
-                eye.transform.localPosition = new Vector3(side * 0.22f, 0.25f, 0.42f);
+                eye.transform.localScale = Vector3.one * 0.34f;
+                eye.transform.localPosition = new Vector3(side * 0.24f, 0.28f, 0.40f);
                 eye.GetComponent<Renderer>().sharedMaterial = eyeMat;
                 Object.DestroyImmediate(eye.GetComponent<SphereCollider>());
 
                 var pupil = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 pupil.name = "Pupil";
                 pupil.transform.SetParent(eye.transform);
-                pupil.transform.localScale = Vector3.one * 0.5f;
-                pupil.transform.localPosition = new Vector3(0f, 0f, 0.4f);
+                pupil.transform.localScale = Vector3.one * 0.55f;
+                pupil.transform.localPosition = new Vector3(0f, -0.05f, 0.42f);
                 pupil.GetComponent<Renderer>().sharedMaterial = pupilMat;
                 Object.DestroyImmediate(pupil.GetComponent<SphereCollider>());
             }
@@ -85,16 +84,16 @@ namespace BurakOyun.Editor
         static void CreateSegmentPrefab()
         {
             const string path = "Assets/Prefabs/SnakeSegment.prefab";
-            if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null) return;
-
             var go = new GameObject("SnakeSegment");
-            var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cube.name = "Cube";
-            cube.transform.SetParent(go.transform);
-            cube.transform.localScale = Vector3.one * 0.85f;
-            cube.GetComponent<Renderer>().sharedMaterial =
-                GetOrCreateMaterial("Assets/Prefabs/SnakeMat.mat", new Color(0.2f, 0.85f, 0.3f));
-            Object.DestroyImmediate(cube.GetComponent<BoxCollider>());
+            // Yuvarlak gövde boncuğu (küre). Renk SnakeController'da segment indeksine göre
+            // gradyan ile değiştirilir (MaterialPropertyBlock); buradaki renk yedek.
+            var body = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            body.name = "Cube";
+            body.transform.SetParent(go.transform);
+            body.transform.localScale = Vector3.one * 0.82f;
+            body.GetComponent<Renderer>().sharedMaterial =
+                GetOrCreateMaterial("Assets/Prefabs/SnakeMat.mat", new Color(0.20f, 0.80f, 0.45f), 0.25f);
+            Object.DestroyImmediate(body.GetComponent<SphereCollider>());
 
             PrefabUtility.SaveAsPrefabAsset(go, path);
             Object.DestroyImmediate(go);
@@ -103,28 +102,38 @@ namespace BurakOyun.Editor
         static void CreateFoodPrefab()
         {
             const string path = "Assets/Prefabs/Food.prefab";
-            if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null) return;
-
             var go = new GameObject("Food");
 
-            // Elma gövdesi
-            var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            sphere.name = "Apple";
-            sphere.transform.SetParent(go.transform);
-            sphere.transform.localScale = Vector3.one * 0.7f;
-            sphere.GetComponent<Renderer>().sharedMaterial =
-                GetOrCreateMaterial("Assets/Prefabs/FoodMat.mat", new Color(0.95f, 0.25f, 0.2f));
-            Object.DestroyImmediate(sphere.GetComponent<SphereCollider>());
+            // Elma gövdesi (parlak, hafif basık)
+            var apple = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            apple.name = "Apple";
+            apple.transform.SetParent(go.transform);
+            apple.transform.localScale = new Vector3(0.72f, 0.66f, 0.72f);
+            apple.GetComponent<Renderer>().sharedMaterial =
+                GetOrCreateMaterial("Assets/Prefabs/FoodMat.mat", new Color(0.93f, 0.26f, 0.28f), 0.6f);
+            Object.DestroyImmediate(apple.GetComponent<SphereCollider>());
 
-            // Yeşil sap
-            var stem = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            // Kahverengi sap (silindir, hafif eğik)
+            var stem = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             stem.name = "Stem";
             stem.transform.SetParent(go.transform);
-            stem.transform.localScale = new Vector3(0.08f, 0.25f, 0.08f);
-            stem.transform.localPosition = new Vector3(0f, 0.4f, 0f);
+            stem.transform.localScale = new Vector3(0.05f, 0.16f, 0.05f);
+            stem.transform.localPosition = new Vector3(0f, 0.42f, 0f);
+            stem.transform.localRotation = Quaternion.Euler(8f, 0f, -10f);
             stem.GetComponent<Renderer>().sharedMaterial =
-                GetOrCreateMaterial("Assets/Prefabs/StemMat.mat", new Color(0.3f, 0.6f, 0.2f));
-            Object.DestroyImmediate(stem.GetComponent<BoxCollider>());
+                GetOrCreateMaterial("Assets/Prefabs/StemMat.mat", new Color(0.45f, 0.30f, 0.16f), 0.2f);
+            Object.DestroyImmediate(stem.GetComponent<CapsuleCollider>());
+
+            // Yeşil yaprak (basık küre)
+            var leaf = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            leaf.name = "Leaf";
+            leaf.transform.SetParent(go.transform);
+            leaf.transform.localScale = new Vector3(0.28f, 0.05f, 0.16f);
+            leaf.transform.localPosition = new Vector3(0.16f, 0.46f, 0f);
+            leaf.transform.localRotation = Quaternion.Euler(0f, 0f, 25f);
+            leaf.GetComponent<Renderer>().sharedMaterial =
+                GetOrCreateMaterial("Assets/Prefabs/LeafMat.mat", new Color(0.40f, 0.78f, 0.32f), 0.3f);
+            Object.DestroyImmediate(leaf.GetComponent<SphereCollider>());
 
             PrefabUtility.SaveAsPrefabAsset(go, path);
             Object.DestroyImmediate(go);
@@ -162,12 +171,18 @@ namespace BurakOyun.Editor
             QualitySettings.renderPipeline = urp;
         }
 
-        static Material GetOrCreateMaterial(string path, Color color)
+        // Materyali oluşturur YA DA varsa renk/parlaklığını günceller (yeniden kurulumda yeni palet uygulanır).
+        static Material GetOrCreateMaterial(string path, Color color, float smoothness = 0.2f)
         {
             var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
-            if (mat != null) return mat;
-            mat = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = color };
-            AssetDatabase.CreateAsset(mat, path);
+            if (mat == null)
+            {
+                mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                AssetDatabase.CreateAsset(mat, path);
+            }
+            mat.color = color;
+            mat.SetFloat("_Smoothness", smoothness);
+            EditorUtility.SetDirty(mat);
             return mat;
         }
 
@@ -217,8 +232,8 @@ namespace BurakOyun.Editor
 
             // ── Dama desenli zemin (çocuk hücreleri görsün) ──
             var board = new GameObject("Board");
-            var groundA = GetOrCreateMaterial("Assets/Prefabs/GroundMat.mat", new Color(0.45f, 0.78f, 0.45f));
-            var groundB = GetOrCreateMaterial("Assets/Prefabs/GroundMatAlt.mat", new Color(0.52f, 0.84f, 0.52f));
+            var groundA = GetOrCreateMaterial("Assets/Prefabs/GroundMat.mat", new Color(0.64f, 0.86f, 0.66f), 0.1f);
+            var groundB = GetOrCreateMaterial("Assets/Prefabs/GroundMatAlt.mat", new Color(0.74f, 0.92f, 0.74f), 0.1f);
             for (int x = 0; x < config.gridWidth; x++)
                 for (int y = 0; y < config.gridHeight; y++)
                 {
@@ -232,7 +247,7 @@ namespace BurakOyun.Editor
                 }
 
             // ── Duvarlar (görsel sınır — çarpışma mantığı ızgarada) ──
-            var wallMat = GetOrCreateMaterial("Assets/Prefabs/WallMat.mat", new Color(0.65f, 0.45f, 0.25f));
+            var wallMat = GetOrCreateMaterial("Assets/Prefabs/WallMat.mat", new Color(0.45f, 0.78f, 0.74f), 0.2f); // pastel deniz mavisi
             var walls = new GameObject("Walls");
             void MakeWall(string name, Vector3 pos, Vector3 scale)
             {
@@ -249,6 +264,24 @@ namespace BurakOyun.Editor
             MakeWall("WallBottom", new Vector3(0f, 0.25f, -boardH / 2f - t / 2f), new Vector3(boardW + 2 * t, 0.6f, t));
             MakeWall("WallLeft", new Vector3(-boardW / 2f - t / 2f, 0.25f, 0f), new Vector3(t, 0.6f, boardH));
             MakeWall("WallRight", new Vector3(boardW / 2f + t / 2f, 0.25f, 0f), new Vector3(t, 0.6f, boardH));
+
+            // Yuvarlak köşe direkleri (şirin çerçeve, sıcak sarı)
+            var postMat = GetOrCreateMaterial("Assets/Prefabs/PostMat.mat", new Color(0.98f, 0.78f, 0.42f), 0.3f);
+            float px = boardW / 2f + t / 2f, pz = boardH / 2f + t / 2f;
+            foreach (var corner in new[]
+            {
+                new Vector3(-px, 0.35f, -pz), new Vector3(px, 0.35f, -pz),
+                new Vector3(-px, 0.35f, pz), new Vector3(px, 0.35f, pz)
+            })
+            {
+                var post = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                post.name = "CornerPost";
+                post.transform.SetParent(walls.transform);
+                post.transform.position = corner;
+                post.transform.localScale = Vector3.one * (t * 1.7f);
+                post.GetComponent<Renderer>().sharedMaterial = postMat;
+                Object.DestroyImmediate(post.GetComponent<SphereCollider>());
+            }
 
             // ── Yılan ──
             var snakeGo = new GameObject("Snake");
@@ -273,16 +306,42 @@ namespace BurakOyun.Editor
             camGo.AddComponent<AudioListener>();
             cam.transform.position = new Vector3(0f, boardH * 1.15f, -boardH * 0.85f);
             cam.transform.LookAt(new Vector3(0f, 0f, -boardH * 0.05f));
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.53f, 0.81f, 0.98f); // açık gökyüzü mavisi
 
-            // ── Işık ──
+            // ── Gradient gökyüzü (procedural skybox) ──
+            const string skyPath = "Assets/Settings/SkyMat.mat";
+            var skyMat = AssetDatabase.LoadAssetAtPath<Material>(skyPath);
+            if (skyMat == null)
+            {
+                skyMat = new Material(Shader.Find("Skybox/Procedural"));
+                AssetDatabase.CreateAsset(skyMat, skyPath);
+            }
+            skyMat.SetColor("_SkyTint", new Color(0.55f, 0.78f, 0.98f));
+            skyMat.SetColor("_GroundColor", new Color(0.82f, 0.92f, 0.86f));
+            skyMat.SetFloat("_AtmosphereThickness", 0.9f);
+            skyMat.SetFloat("_Exposure", 1.35f);
+            EditorUtility.SetDirty(skyMat);
+            RenderSettings.skybox = skyMat;
+            cam.clearFlags = CameraClearFlags.Skybox;
+
+            // ── Işık: sıcak ana + serin dolgu + yumuşak pastel ortam ──
             var lightGo = new GameObject("Directional Light");
             var light = lightGo.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 1.2f;
-            light.color = new Color(1f, 0.97f, 0.9f);
-            lightGo.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            light.intensity = 1.05f;
+            light.color = new Color(1f, 0.96f, 0.88f);
+            light.shadows = LightShadows.Soft;
+            lightGo.transform.rotation = Quaternion.Euler(48f, -28f, 0f);
+
+            var fillGo = new GameObject("Fill Light");
+            var fill = fillGo.AddComponent<Light>();
+            fill.type = LightType.Directional;
+            fill.intensity = 0.4f;
+            fill.color = new Color(0.70f, 0.82f, 1f);
+            fill.shadows = LightShadows.None;
+            fillGo.transform.rotation = Quaternion.Euler(35f, 150f, 0f);
+
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.62f, 0.70f, 0.75f);
 
             // ── Manager'lar ──
             var managers = new GameObject("GameManagers");
@@ -297,7 +356,7 @@ namespace BurakOyun.Editor
             var musicSrc = managers.AddComponent<AudioSource>();
             musicSrc.playOnAwake = false;
             musicSrc.loop = true;
-            musicSrc.volume = 0.3f;
+            musicSrc.volume = 0.12f; // çok düşük, rahatsız etmesin (AudioManager da ayarlar)
             SetField(audioMgr, "gameManager", gameMgr);
             SetField(audioMgr, "sfxSource", sfxSrc);
             SetField(audioMgr, "musicSource", musicSrc);

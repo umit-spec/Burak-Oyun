@@ -34,6 +34,7 @@ namespace BurakOyun.Core
 
         private void HandleGameOver(int score, bool newBest)
         {
+            if (snake != null) snake.PlayHurtFeedback(); // her ölümde kısa baş flaş + sarsıntı
             if (!newBest || confetti == null) return;
             confetti.transform.position = snake.HeadWorldPosition + Vector3.up * 2f;
             confetti.Play();

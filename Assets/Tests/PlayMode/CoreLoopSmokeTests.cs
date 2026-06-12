@@ -209,5 +209,66 @@ namespace BurakOyun.Tests.PlayMode
             Object.Destroy(gmGo);
             yield return null;
         }
+
+        [UnityTest]
+        public IEnumerator OlumGeriBildirimi_VeMuzik_AkisiBozmaz()
+        {
+            var config = SmallConfig();
+
+            var snakeGo = new GameObject("SnakeRig");
+            snakeGo.SetActive(false);
+            snakeGo.AddComponent<DirectionInput>();
+            var snake = snakeGo.AddComponent<SnakeController>();
+            SetPrivate(snake, "config", config);
+
+            var foodGo = new GameObject("FoodRig");
+            var food = foodGo.AddComponent<FoodSpawner>();
+            SetPrivate(food, "config", config);
+            SetPrivate(food, "snake", snake);
+            SetPrivate(snake, "foodSpawner", food);
+
+            var gmGo = new GameObject("GameManagerRig");
+            gmGo.SetActive(false);
+            var gm = gmGo.AddComponent<GameManager>();
+            SetPrivate(gm, "snake", snake);
+            SetPrivate(gm, "foodSpawner", food);
+
+            // Ödül: ölümde baş feedback'ini tetikler (salt-mantık modunda no-op; akış test edilir)
+            var reward = gmGo.AddComponent<RewardManager>();
+            SetPrivate(reward, "gameManager", gm);
+            SetPrivate(reward, "snake", snake);
+
+            // Ses: müzik kaynağı + sfx
+            var audio = gmGo.AddComponent<BurakOyun.Audio.AudioManager>();
+            SetPrivate(audio, "gameManager", gm);
+            SetPrivate(audio, "sfxSource", gmGo.AddComponent<AudioSource>());
+            var musicSrc = gmGo.AddComponent<AudioSource>();
+            SetPrivate(audio, "musicSource", musicSrc);
+
+            snakeGo.SetActive(true);
+            gmGo.SetActive(true);
+            yield return null; // Awake + Start
+
+            // Müzik: klip atanmış, loop, çok düşük sesli
+            Assert.IsNotNull(musicSrc.clip, "Müzik klibi atanmalı");
+            Assert.IsTrue(musicSrc.loop, "Müzik loop olmalı");
+            Assert.LessOrEqual(musicSrc.volume, 0.2f, "Müzik çok düşük sesli olmalı");
+
+            int gameOver = 0;
+            gm.OnGameOver += (s, b) => gameOver++;
+
+            // Ölüm akışı (RewardManager -> PlayHurtFeedback dahil) hata vermemeli
+            Assert.DoesNotThrow(() =>
+            {
+                gm.StartGame();
+                for (int i = 0; i < 12 && gameOver == 0; i++) snake.Step();
+            });
+            Assert.AreEqual(1, gameOver, "Ölüm akışı bir kez tamamlanmalı (feedback dahil)");
+
+            Object.Destroy(snakeGo);
+            Object.Destroy(foodGo);
+            Object.Destroy(gmGo);
+            yield return null;
+        }
     }
 }
