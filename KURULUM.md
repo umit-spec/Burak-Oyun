@@ -108,7 +108,63 @@ Canvas (Scale With Screen Size, 1920x1080) altında:
 - **Play** bas → OYNA → ok tuşları/A-D ile şerit değiştir, doğru harfleri sırayla topla.
 - **Window → General → Test Runner → EditMode → Run All** → 6 test yeşil olmalı (WordProgressTests).
 
-## 4. Sesler (5. gün)
+## 4. Android APK Build
+
+### Ön Koşullar (bir kez kurulur)
+- Unity Hub → Installs → Unity 6 LTS yanındaki dişli → **Add Modules** →  
+  **Android Build Support** + **Android SDK & NDK Tools** + **OpenJDK** seç, indir.
+
+### Oyun Kontrollerini Anla
+Android'de klavye yoktur. Oyun **dokunmatik** ile oynanır:
+
+| Hareket | Açıklama |
+|---------|---------|
+| Sol yarıya tap | Sol şeride geç |
+| Sağ yarıya tap | Sağ şeride geç |
+| Sola swipe | Sol şeride geç |
+| Sağa swipe | Sağ şeride geç |
+
+Klavye de hâlâ çalışır (PC'de test için).
+
+### Adım Adım
+
+```
+1. Menü: BurakOyun → Android — Player Ayarlarını Kur
+   (Paket adı, API seviyeleri, IL2CPP, ARM64, Landscape yönelim otomatik atanır.)
+
+2. File → Build Settings → Platform listesinden Android seç → Switch Platform
+   (Shaderları yeniden derler, 3-10 dk sürebilir.)
+
+3. Build Settings penceresinde:
+   - Scenes in Build: Assets/Scenes/Game.unity işaretli olmalı ✓
+   - Texture Compression: ASTC (modern Android için en iyi)
+
+4. Build → bir klasör seç → .apk dosyası oluşur.
+   (İlk build ~5 dk, sonraki buildler daha hızlı.)
+```
+
+### Cihaza Yükleme
+
+```
+# USB ile:
+adb install -r BurakOyun.apk
+
+# Dosya ile (eski yöntem):
+.apk'yı telefona kopyala → Ayarlar → Bilinmeyen Kaynaklara İzin Ver → aç
+```
+
+### Yayına Hazırlık (Google Play)
+- **Build Settings → Project Settings → Player → Keystore Manager** ile imzalama anahtarı oluştur.  
+  Anahtarı kaybetme — bir kez kurulur, güvenli saklanır.
+- `.aab` (Android App Bundle) formatında build al:  
+  Build Settings → **Build App Bundle (Google Play)** seçeneğini işaretle.
+- Google Play Console → Create App → Internal Testing'e yükle → test et → yayınla.
+
+### Bilinen Sınırlama
+- Android geri tuşu şu an oyunu kapatabilir. Çocukların kazara kapatmaması için  
+  `GameManager.cs`'e `Application.Quit()` yerine sessiz geri tuşu engeli eklenebilir (ileriki sürüm).
+
+## 5. Sesler
 Telefonla kaydet veya ücretsiz kaynak kullan: `Bee!`, `U!`, `Re!`, `A!`, `Ke!` (veya harf adları), `BURAK!`, yumuşak "ding", komik "boing", alkış. `.wav` olarak `Assets/Audio`'ya at, WordData ve AudioManager'a bağla.
 
 ## Güvenlik Hatırlatması
