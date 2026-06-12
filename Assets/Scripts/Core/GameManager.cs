@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using BurakOyun.Gameplay;
 using BurakOyun.UI;
@@ -5,58 +6,75 @@ using BurakOyun.UI;
 namespace BurakOyun.Core
 {
     /// <summary>
-    /// Durum makinesi: Menu → Playing → WordComplete → (Tekrar Oyna) → Playing.
-    /// "Game Over" durumu bilinçli olarak YOKTUR.
+    /// Durum makinesi: Menu → Playing → GameOver → (Tekrar Oyna) → Playing.
+    /// Skoru sayar, event yayınlar; UI/ses/ödül bu event'lere abone olur.
+    /// Çarpışma "kaybetmek" olarak değil "tekrar dene" olarak sunulur (çocuk dostu).
     /// </summary>
     public class GameManager : MonoBehaviour
     {
         [SerializeField] private SnakeController snake;
-        [SerializeField] private LetterSpawner spawner;
-        [SerializeField] private WordManager wordManager;
-        [SerializeField] private RewardManager rewardManager;
+        [SerializeField] private FoodSpawner foodSpawner;
         [SerializeField] private UIManager ui;
-        [SerializeField] private float completePauseDelay = 3f; // kutlamayı izleme süresi
 
-        public enum State { Menu, Playing, WordComplete }
-        public State Current { get; private set; } = State.Menu;
+        public GameStateManager State { get; } = new();
+        public int Score { get; private set; }
+
+        public event Action<int> OnScoreChanged;
+        public event Action OnGameStarted;
+        /// <summary>(skor, yeni rekor mu)</summary>
+        public event Action<int, bool> OnGameOver;
 
         private void OnEnable()
         {
-            wordManager.OnWrongLetter += HandleWrong;
-            wordManager.OnWordComplete += HandleWordComplete;
+            snake.OnAteFood += HandleAte;
+            snake.OnDied += HandleDied;
         }
 
         private void OnDisable()
         {
-            wordManager.OnWrongLetter -= HandleWrong;
-            wordManager.OnWordComplete -= HandleWordComplete;
+            snake.OnAteFood -= HandleAte;
+            snake.OnDied -= HandleDied;
         }
 
-        /// OYNA butonuna bağlanır.
+        /// OYNA ve TEKRAR OYNA butonlarına bağlanır.
         public void StartGame()
         {
-            Current = State.Playing;
-            wordManager.ResetWord();
-            snake.ResetToStart();
+            Score = 0;
+            State.SetState(GameState.Playing);
+            snake.ResetSnake();
+            foodSpawner.Clear();
+            foodSpawner.SpawnFood();
             snake.IsMoving = true;
-            spawner.StartSpawning();
-            ui.ShowStart(false);
-            ui.ShowComplete(false);
+            if (ui != null)
+            {
+                ui.ShowStart(false);
+                ui.ShowGameOver(false);
+            }
+            OnScoreChanged?.Invoke(Score);
+            OnGameStarted?.Invoke();
         }
 
-        /// TEKRAR OYNA butonuna bağlanır.
         public void Replay() => StartGame();
 
-        private void HandleWrong(char letter) => snake.ApplySlowdown();
-
-        private void HandleWordComplete()
+        private void HandleAte()
         {
-            Current = State.WordComplete;
-            spawner.StopAndClear();
-            SaveManager.ReportStars(rewardManager.Stars);
-            Invoke(nameof(StopSnake), completePauseDelay);
+            Score++;
+            OnScoreChanged?.Invoke(Score);
+            foodSpawner.Clear();
+            if (!foodSpawner.SpawnFood())
+                EndGame(); // tahta tamamen doldu — bu bir zafer, yine de kutlanır :)
         }
 
-        private void StopSnake() => snake.IsMoving = false;
+        private void HandleDied() => EndGame();
+
+        private void EndGame()
+        {
+            snake.IsMoving = false;
+            foodSpawner.Clear();
+            State.SetState(GameState.GameOver);
+            bool newBest = SaveManager.ReportScore(Score);
+            if (ui != null) ui.ShowGameOverPanel(Score, newBest);
+            OnGameOver?.Invoke(Score, newBest);
+        }
     }
 }

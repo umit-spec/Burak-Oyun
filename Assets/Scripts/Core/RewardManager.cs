@@ -4,56 +4,39 @@ using BurakOyun.Gameplay;
 namespace BurakOyun.Core
 {
     /// <summary>
-    /// Yıldız sayacı + kelime tamam kutlaması (konfeti). Ceza mekanizması YOKTUR.
+    /// Yem yenince parıltı, yeni rekorla biten oyunda konfeti. Ceza efekti YOKTUR.
     /// </summary>
     public class RewardManager : MonoBehaviour
     {
-        [SerializeField] private WordManager wordManager;
+        [SerializeField] private GameManager gameManager;
+        [SerializeField] private SnakeController snake;
         [SerializeField] private ParticleSystem confetti;
         [SerializeField] private ParticleSystem collectSparkle;
-        [SerializeField] private Transform snake;
-
-        public int Stars { get; private set; }
-        public event System.Action<int> OnStarsChanged;
 
         private void OnEnable()
         {
-            wordManager.OnCorrectLetter += HandleCorrect;
-            wordManager.OnWordComplete += HandleComplete;
-            wordManager.OnWordReset += HandleReset;
+            gameManager.OnScoreChanged += HandleScore;
+            gameManager.OnGameOver += HandleGameOver;
         }
 
         private void OnDisable()
         {
-            wordManager.OnCorrectLetter -= HandleCorrect;
-            wordManager.OnWordComplete -= HandleComplete;
-            wordManager.OnWordReset -= HandleReset;
+            gameManager.OnScoreChanged -= HandleScore;
+            gameManager.OnGameOver -= HandleGameOver;
         }
 
-        private void HandleCorrect(char letter, int index)
+        private void HandleScore(int score)
         {
-            Stars++;
-            OnStarsChanged?.Invoke(Stars);
-            if (collectSparkle != null)
-            {
-                collectSparkle.transform.position = snake.position + Vector3.up;
-                collectSparkle.Play();
-            }
+            if (score <= 0 || collectSparkle == null) return; // 0 = oyun başı, yem yenmedi
+            collectSparkle.transform.position = snake.HeadWorldPosition + Vector3.up;
+            collectSparkle.Play();
         }
 
-        private void HandleComplete()
+        private void HandleGameOver(int score, bool newBest)
         {
-            if (confetti != null)
-            {
-                confetti.transform.position = snake.position + Vector3.up * 2f;
-                confetti.Play();
-            }
-        }
-
-        private void HandleReset()
-        {
-            Stars = 0;
-            OnStarsChanged?.Invoke(Stars);
+            if (!newBest || confetti == null) return;
+            confetti.transform.position = snake.HeadWorldPosition + Vector3.up * 2f;
+            confetti.Play();
         }
     }
 }

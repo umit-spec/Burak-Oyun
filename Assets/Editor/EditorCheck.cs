@@ -53,7 +53,7 @@ namespace BurakOyun.Editor
             {
                 CheckSceneComponent<GameManager>(sb, ref pass, ref fail, "GameManager");
                 CheckSceneComponent<SnakeController>(sb, ref pass, ref fail, "SnakeController");
-                CheckSceneComponent<WordManager>(sb, ref pass, ref fail, "WordManager");
+                CheckSceneComponent<FoodSpawner>(sb, ref pass, ref fail, "FoodSpawner");
                 CheckSceneComponent<UIManager>(sb, ref pass, ref fail, "UIManager");
             }
             else

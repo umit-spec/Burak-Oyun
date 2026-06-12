@@ -8,14 +8,17 @@ using UnityEditor.SceneManagement;
 
 namespace BurakOyun.Editor
 {
+    /// <summary>
+    /// Yılan oyunu sahnesini sıfırdan programatik kurar (elle sahne kurulumu yok).
+    /// Menü sırası: 0 URP → 1 Asset → 2 Prefab → 3 Sahne. "3" hepsini otomatik çağırır.
+    /// </summary>
     public static class SceneSetup
     {
-        [MenuItem("BurakOyun/1 — Asset'leri Oluştur (Config + WordData)", priority = 1)]
+        [MenuItem("BurakOyun/1 — Asset'leri Oluştur (GameConfig)", priority = 1)]
         public static void CreateAssets()
         {
             EnsureFolder("Assets/Data");
 
-            // GameConfig
             if (AssetDatabase.LoadAssetAtPath<ScriptableObject>("Assets/Data/GameConfig.asset") == null)
             {
                 var gc = ScriptableObject.CreateInstance<Data.GameConfig>();
@@ -23,83 +26,108 @@ namespace BurakOyun.Editor
                 Debug.Log("[BurakOyun] GameConfig oluşturuldu.");
             }
 
-            // WordData
-            if (AssetDatabase.LoadAssetAtPath<ScriptableObject>("Assets/Data/WordData_BURAK.asset") == null)
-            {
-                var wd = ScriptableObject.CreateInstance<Data.WordData>();
-                wd.word = "BURAK";
-                wd.letters = new Data.LetterAudioEntry[]
-                {
-                    new() { letter = "B" },
-                    new() { letter = "U" },
-                    new() { letter = "R" },
-                    new() { letter = "A" },
-                    new() { letter = "K" },
-                };
-                AssetDatabase.CreateAsset(wd, "Assets/Data/WordData_BURAK.asset");
-                Debug.Log("[BurakOyun] WordData_BURAK oluşturuldu.");
-            }
-
             AssetDatabase.SaveAssets();
             Debug.Log("[BurakOyun] ✓ Asset'ler hazır.");
         }
 
-        [MenuItem("BurakOyun/2 — Letter Prefab Oluştur", priority = 2)]
-        public static void CreateLetterPrefab()
+        [MenuItem("BurakOyun/2 — Prefab'ları Oluştur (Yılan + Yem)", priority = 2)]
+        public static void CreatePrefabs()
         {
             EnsureFolder("Assets/Prefabs");
-            string path = "Assets/Prefabs/Letter.prefab";
-            if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null)
+            CreateHeadPrefab();
+            CreateSegmentPrefab();
+            CreateFoodPrefab();
+            AssetDatabase.SaveAssets();
+            Debug.Log("[BurakOyun] ✓ Prefab'lar hazır (SnakeHead, SnakeSegment, Food).");
+        }
+
+        static void CreateHeadPrefab()
+        {
+            const string path = "Assets/Prefabs/SnakeHead.prefab";
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null) return;
+
+            var go = new GameObject("SnakeHead");
+
+            var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cube.name = "Cube";
+            cube.transform.SetParent(go.transform);
+            cube.transform.localScale = Vector3.one * 0.95f;
+            cube.GetComponent<Renderer>().sharedMaterial =
+                GetOrCreateMaterial("Assets/Prefabs/SnakeHeadMat.mat", new Color(0.15f, 0.65f, 0.25f));
+            Object.DestroyImmediate(cube.GetComponent<BoxCollider>());
+
+            // Sevimli gözler — baş, SnakeController tarafından gidiş yönüne (+Z) döndürülür
+            var eyeMat = GetOrCreateMaterial("Assets/Prefabs/EyeMat.mat", Color.white);
+            var pupilMat = GetOrCreateMaterial("Assets/Prefabs/PupilMat.mat", Color.black);
+            for (int side = -1; side <= 1; side += 2)
             {
-                Debug.Log("[BurakOyun] Letter prefab zaten var.");
-                return;
+                var eye = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                eye.name = side < 0 ? "EyeL" : "EyeR";
+                eye.transform.SetParent(go.transform);
+                eye.transform.localScale = Vector3.one * 0.28f;
+                eye.transform.localPosition = new Vector3(side * 0.22f, 0.25f, 0.42f);
+                eye.GetComponent<Renderer>().sharedMaterial = eyeMat;
+                Object.DestroyImmediate(eye.GetComponent<SphereCollider>());
+
+                var pupil = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                pupil.name = "Pupil";
+                pupil.transform.SetParent(eye.transform);
+                pupil.transform.localScale = Vector3.one * 0.5f;
+                pupil.transform.localPosition = new Vector3(0f, 0f, 0.4f);
+                pupil.GetComponent<Renderer>().sharedMaterial = pupilMat;
+                Object.DestroyImmediate(pupil.GetComponent<SphereCollider>());
             }
-
-            var go = new GameObject("Letter");
-
-            // 3D arka plan küp (harf tahtası)
-            var board = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            board.name = "Board";
-            board.transform.SetParent(go.transform);
-            board.transform.localScale = new Vector3(1.5f, 1.5f, 0.3f);
-            board.transform.localPosition = Vector3.zero;
-            var boardMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            boardMat.color = new Color(0.3f, 0.7f, 1f);
-            board.GetComponent<Renderer>().sharedMaterial = boardMat;
-            AssetDatabase.CreateAsset(boardMat, "Assets/Prefabs/LetterBoardMat.mat");
-
-            // Collider: board'un collider'ını trigger yap
-            board.GetComponent<BoxCollider>().isTrigger = true;
-            // Ana objeye collider taşı
-            Object.DestroyImmediate(board.GetComponent<BoxCollider>());
-            var col = go.AddComponent<BoxCollider>();
-            col.isTrigger = true;
-            col.size = new Vector3(1.8f, 1.8f, 0.8f);
-
-            // TextMeshPro 3D label
-            var textGo = new GameObject("Label");
-            textGo.transform.SetParent(go.transform);
-            textGo.transform.localPosition = new Vector3(0f, 0f, -0.2f);
-            textGo.transform.localScale = Vector3.one;
-            var tmp = textGo.AddComponent<TextMeshPro>();
-            tmp.text = "A";
-            tmp.fontSize = 8;
-            tmp.alignment = TextAlignmentOptions.Center;
-            tmp.color = Color.white;
-            tmp.fontStyle = FontStyles.Bold;
-            tmp.enableAutoSizing = false;
-            tmp.rectTransform.sizeDelta = new Vector2(2f, 2f);
-
-            // LetterCollectible script
-            var lc = go.AddComponent<Gameplay.LetterCollectible>();
-            // label field'ını bağla (SerializeField reflection ile)
-            var so = new SerializedObject(lc);
-            so.FindProperty("label").objectReferenceValue = tmp;
-            so.ApplyModifiedPropertiesWithoutUndo();
 
             PrefabUtility.SaveAsPrefabAsset(go, path);
             Object.DestroyImmediate(go);
-            Debug.Log("[BurakOyun] ✓ Letter prefab oluşturuldu.");
+        }
+
+        static void CreateSegmentPrefab()
+        {
+            const string path = "Assets/Prefabs/SnakeSegment.prefab";
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null) return;
+
+            var go = new GameObject("SnakeSegment");
+            var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cube.name = "Cube";
+            cube.transform.SetParent(go.transform);
+            cube.transform.localScale = Vector3.one * 0.85f;
+            cube.GetComponent<Renderer>().sharedMaterial =
+                GetOrCreateMaterial("Assets/Prefabs/SnakeMat.mat", new Color(0.2f, 0.85f, 0.3f));
+            Object.DestroyImmediate(cube.GetComponent<BoxCollider>());
+
+            PrefabUtility.SaveAsPrefabAsset(go, path);
+            Object.DestroyImmediate(go);
+        }
+
+        static void CreateFoodPrefab()
+        {
+            const string path = "Assets/Prefabs/Food.prefab";
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null) return;
+
+            var go = new GameObject("Food");
+
+            // Elma gövdesi
+            var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            sphere.name = "Apple";
+            sphere.transform.SetParent(go.transform);
+            sphere.transform.localScale = Vector3.one * 0.7f;
+            sphere.GetComponent<Renderer>().sharedMaterial =
+                GetOrCreateMaterial("Assets/Prefabs/FoodMat.mat", new Color(0.95f, 0.25f, 0.2f));
+            Object.DestroyImmediate(sphere.GetComponent<SphereCollider>());
+
+            // Yeşil sap
+            var stem = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            stem.name = "Stem";
+            stem.transform.SetParent(go.transform);
+            stem.transform.localScale = new Vector3(0.08f, 0.25f, 0.08f);
+            stem.transform.localPosition = new Vector3(0f, 0.4f, 0f);
+            stem.GetComponent<Renderer>().sharedMaterial =
+                GetOrCreateMaterial("Assets/Prefabs/StemMat.mat", new Color(0.3f, 0.6f, 0.2f));
+            Object.DestroyImmediate(stem.GetComponent<BoxCollider>());
+
+            PrefabUtility.SaveAsPrefabAsset(go, path);
+            Object.DestroyImmediate(go);
         }
 
         [MenuItem("BurakOyun/0 — URP Pipeline Kur (önce bunu)", priority = 0)]
@@ -124,7 +152,7 @@ namespace BurakOyun.Editor
             AssetDatabase.SaveAssets();
 
             AssignPipeline(urp);
-            Debug.Log("[BurakOyun] ✓ URP pipeline oluşturuldu ve Graphics/Quality'ye atandı. Magenta materyaller artık düzgün render olur.");
+            Debug.Log("[BurakOyun] ✓ URP pipeline oluşturuldu ve Graphics/Quality'ye atandı.");
             return urp;
         }
 
@@ -132,6 +160,15 @@ namespace BurakOyun.Editor
         {
             GraphicsSettings.defaultRenderPipeline = urp;
             QualitySettings.renderPipeline = urp;
+        }
+
+        static Material GetOrCreateMaterial(string path, Color color)
+        {
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (mat != null) return mat;
+            mat = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = color };
+            AssetDatabase.CreateAsset(mat, path);
+            return mat;
         }
 
         static Material CreateUrpParticleMaterial()
@@ -144,7 +181,7 @@ namespace BurakOyun.Editor
         [MenuItem("BurakOyun/3 — Sahneyi Kur (Tüm Objeler)", priority = 3)]
         public static void SetupScene()
         {
-            // TMP Essential Resources kontrolü — font asset yoksa label'lar bozuk görünür
+            // TMP Essential Resources kontrolü — font asset yoksa UI yazıları bozuk görünür
             string tmpFontDir = System.IO.Path.Combine(Application.dataPath,
                 "TextMesh Pro", "Resources", "Fonts & Materials");
             bool tmpReady = System.IO.Directory.Exists(tmpFontDir)
@@ -152,165 +189,127 @@ namespace BurakOyun.Editor
             if (!tmpReady && !EditorUtility.DisplayDialog(
                 "TMP Essential Resources Eksik",
                 "TextMeshPro Essential Resources henüz import edilmemiş.\n\n" +
-                "Harf label'ları bozuk görünebilir.\n\n" +
+                "UI yazıları bozuk görünebilir.\n\n" +
                 "Önce: Window → TextMeshPro → Import TMP Essential Resources\n\n" +
                 "Yine de devam etmek istiyor musunuz?",
                 "Devam Et", "İptal"))
                 return;
 
-            // Önce render pipeline'ı garanti et (yoksa her şey magenta)
+            // Önce render pipeline + asset + prefab garanti
             SetupURP();
-            // Asset'lerin var olduğundan emin ol
             CreateAssets();
-            CreateLetterPrefab();
+            CreatePrefabs();
+
+            // Temiz sahne (eski harf oyunu objeleri karışmasın)
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             var config = AssetDatabase.LoadAssetAtPath<Data.GameConfig>("Assets/Data/GameConfig.asset");
-            var wordData = AssetDatabase.LoadAssetAtPath<Data.WordData>("Assets/Data/WordData_BURAK.asset");
-            var letterPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Letter.prefab");
+            var headPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/SnakeHead.prefab");
+            var segmentPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/SnakeSegment.prefab");
+            var foodPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Food.prefab");
 
-            // ── Zemin Tile'ları ──
-            var trackParent = new GameObject("Track");
-            var tileMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            tileMat.color = new Color(0.45f, 0.78f, 0.45f); // çimen yeşili
-            EnsureFolder("Assets/Prefabs");
-            AssetDatabase.CreateAsset(tileMat, "Assets/Prefabs/GroundMat.mat");
+            // Hücre→dünya dönüşümü oyunla birebir aynı olsun diye aynı çekirdek kullanılır
+            var grid = new Gameplay.GridMovement(config.gridWidth, config.gridHeight);
+            float cell = config.cellSize;
+            float boardW = config.gridWidth * cell;
+            float boardH = config.gridHeight * cell;
 
-            Transform[] tiles = new Transform[3];
-            for (int i = 0; i < 3; i++)
-            {
-                var tile = GameObject.CreatePrimitive(PrimitiveType.Plane);
-                tile.name = $"GroundTile_{i}";
-                tile.transform.SetParent(trackParent.transform);
-                tile.transform.localScale = new Vector3(1.5f, 1f, 3f); // ~30m uzunluk
-                tile.transform.localPosition = new Vector3(0f, 0f, i * 30f);
-                tile.GetComponent<Renderer>().sharedMaterial = tileMat;
-                tile.layer = 0;
-                tiles[i] = tile.transform;
-            }
-
-            // ── Şerit çizgileri (görsel yardım) ──
-            var lineMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            lineMat.color = new Color(1f, 1f, 1f, 0.4f);
-            AssetDatabase.CreateAsset(lineMat, "Assets/Prefabs/LineMat.mat");
-            for (int lane = -1; lane <= 1; lane += 2)
-            {
-                float x = lane * config.laneWidth * 0.5f;
-                for (int t = 0; t < 3; t++)
+            // ── Dama desenli zemin (çocuk hücreleri görsün) ──
+            var board = new GameObject("Board");
+            var groundA = GetOrCreateMaterial("Assets/Prefabs/GroundMat.mat", new Color(0.45f, 0.78f, 0.45f));
+            var groundB = GetOrCreateMaterial("Assets/Prefabs/GroundMatAlt.mat", new Color(0.52f, 0.84f, 0.52f));
+            for (int x = 0; x < config.gridWidth; x++)
+                for (int y = 0; y < config.gridHeight; y++)
                 {
-                    var line = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    line.name = $"LaneLine_{lane}_{t}";
-                    line.transform.SetParent(tiles[t]);
-                    line.transform.localScale = new Vector3(0.015f, 0.002f, 1f);
-                    line.transform.localPosition = new Vector3(x / tiles[t].lossyScale.x, 0.001f, 0f);
-                    line.GetComponent<Renderer>().sharedMaterial = lineMat;
-                    Object.DestroyImmediate(line.GetComponent<BoxCollider>());
+                    var tile = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    tile.name = $"Cell_{x}_{y}";
+                    tile.transform.SetParent(board.transform);
+                    tile.transform.localScale = new Vector3(cell, 0.1f, cell);
+                    tile.transform.position = grid.CellToWorld(new Vector2Int(x, y), cell, -0.05f);
+                    tile.GetComponent<Renderer>().sharedMaterial = (x + y) % 2 == 0 ? groundA : groundB;
+                    Object.DestroyImmediate(tile.GetComponent<BoxCollider>());
                 }
-            }
 
-            // ── Yılan (Snake) ──
-            var snakeGo = new GameObject("Snake");
-            snakeGo.tag = "Player"; // LetterCollectible bunu bekler
-
-            // Gövde: kapsül
-            var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            body.name = "Body";
-            body.transform.SetParent(snakeGo.transform);
-            body.transform.localPosition = Vector3.zero;
-            body.transform.localScale = new Vector3(0.8f, 0.8f, 0.8f);
-            body.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            var snakeMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            snakeMat.color = new Color(0.2f, 0.85f, 0.3f); // sevimli yeşil
-            body.GetComponent<Renderer>().sharedMaterial = snakeMat;
-            AssetDatabase.CreateAsset(snakeMat, "Assets/Prefabs/SnakeMat.mat");
-            Object.DestroyImmediate(body.GetComponent<CapsuleCollider>());
-            // Sevimli bob animasyonu görsel gövdede — kök hareketiyle (SnakeController) çakışmaz
-            body.AddComponent<Gameplay.SnakeBob>();
-
-            // Gözler
-            for (int side = -1; side <= 1; side += 2)
+            // ── Duvarlar (görsel sınır — çarpışma mantığı ızgarada) ──
+            var wallMat = GetOrCreateMaterial("Assets/Prefabs/WallMat.mat", new Color(0.65f, 0.45f, 0.25f));
+            var walls = new GameObject("Walls");
+            void MakeWall(string name, Vector3 pos, Vector3 scale)
             {
-                var eye = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                eye.name = side < 0 ? "EyeL" : "EyeR";
-                eye.transform.SetParent(snakeGo.transform);
-                eye.transform.localScale = Vector3.one * 0.25f;
-                eye.transform.localPosition = new Vector3(side * 0.2f, 0.2f, 0.35f);
-                var eyeMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-                eyeMat.color = Color.white;
-                eye.GetComponent<Renderer>().sharedMaterial = eyeMat;
-                Object.DestroyImmediate(eye.GetComponent<SphereCollider>());
-                if (side < 0) AssetDatabase.CreateAsset(eyeMat, "Assets/Prefabs/EyeMat.mat");
-                else eye.GetComponent<Renderer>().sharedMaterial =
-                    AssetDatabase.LoadAssetAtPath<Material>("Assets/Prefabs/EyeMat.mat");
-
-                var pupil = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                pupil.name = "Pupil";
-                pupil.transform.SetParent(eye.transform);
-                pupil.transform.localScale = Vector3.one * 0.5f;
-                pupil.transform.localPosition = new Vector3(0f, 0f, -0.4f);
-                var pupilMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-                pupilMat.color = Color.black;
-                pupil.GetComponent<Renderer>().sharedMaterial = pupilMat;
-                Object.DestroyImmediate(pupil.GetComponent<SphereCollider>());
-                if (side < 0) AssetDatabase.CreateAsset(pupilMat, "Assets/Prefabs/PupilMat.mat");
-                else pupil.GetComponent<Renderer>().sharedMaterial =
-                    AssetDatabase.LoadAssetAtPath<Material>("Assets/Prefabs/PupilMat.mat");
+                var w = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                w.name = name;
+                w.transform.SetParent(walls.transform);
+                w.transform.position = pos;
+                w.transform.localScale = scale;
+                w.GetComponent<Renderer>().sharedMaterial = wallMat;
+                Object.DestroyImmediate(w.GetComponent<BoxCollider>());
             }
+            const float t = 0.5f; // duvar kalınlığı
+            MakeWall("WallTop", new Vector3(0f, 0.25f, boardH / 2f + t / 2f), new Vector3(boardW + 2 * t, 0.6f, t));
+            MakeWall("WallBottom", new Vector3(0f, 0.25f, -boardH / 2f - t / 2f), new Vector3(boardW + 2 * t, 0.6f, t));
+            MakeWall("WallLeft", new Vector3(-boardW / 2f - t / 2f, 0.25f, 0f), new Vector3(t, 0.6f, boardH));
+            MakeWall("WallRight", new Vector3(boardW / 2f + t / 2f, 0.25f, 0f), new Vector3(t, 0.6f, boardH));
 
-            // Snake collider (trigger toplama için)
-            var snakeCol = snakeGo.AddComponent<SphereCollider>();
-            snakeCol.radius = 0.6f;
-            snakeCol.isTrigger = false;
-
-            // Rigidbody (kinematic — fizik tepkisi istemiyoruz ama trigger algılama için gerekli)
-            var rb = snakeGo.AddComponent<Rigidbody>();
-            rb.isKinematic = true;
-            rb.useGravity = false;
-
-            snakeGo.transform.position = new Vector3(0f, 0.5f, 5f);
-
-            // Snake scriptleri
-            var laneInput = snakeGo.AddComponent<Gameplay.LaneInput>();
+            // ── Yılan ──
+            var snakeGo = new GameObject("Snake");
+            snakeGo.AddComponent<Gameplay.DirectionInput>();
             var snakeCtrl = snakeGo.AddComponent<Gameplay.SnakeController>();
             SetField(snakeCtrl, "config", config);
+            SetField(snakeCtrl, "headPrefab", headPrefab);
+            SetField(snakeCtrl, "segmentPrefab", segmentPrefab);
 
-            // ── Kamera ──
-            var cam = Camera.main;
-            if (cam == null)
-            {
-                var camGo = new GameObject("Main Camera");
-                cam = camGo.AddComponent<Camera>();
-                camGo.tag = "MainCamera";
-            }
-            var camFollow = cam.gameObject.AddComponent<Gameplay.CameraFollow>();
-            SetField(camFollow, "target", snakeGo.transform);
-            cam.transform.position = new Vector3(0f, 6f, -3f);
+            // ── Yem ──
+            var foodGo = new GameObject("FoodSpawner");
+            var foodSpawner = foodGo.AddComponent<Gameplay.FoodSpawner>();
+            SetField(foodSpawner, "config", config);
+            SetField(foodSpawner, "snake", snakeCtrl);
+            SetField(foodSpawner, "foodPrefab", foodPrefab);
+            SetField(snakeCtrl, "foodSpawner", foodSpawner);
 
-            // ── WordManager ──
+            // ── Kamera (sabit — tüm tahtayı görür, hafif eğik sevimli açı) ──
+            var camGo = new GameObject("Main Camera");
+            var cam = camGo.AddComponent<Camera>();
+            camGo.tag = "MainCamera";
+            camGo.AddComponent<AudioListener>();
+            cam.transform.position = new Vector3(0f, boardH * 1.15f, -boardH * 0.85f);
+            cam.transform.LookAt(new Vector3(0f, 0f, -boardH * 0.05f));
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.53f, 0.81f, 0.98f); // açık gökyüzü mavisi
+
+            // ── Işık ──
+            var lightGo = new GameObject("Directional Light");
+            var light = lightGo.AddComponent<Light>();
+            light.type = LightType.Directional;
+            light.intensity = 1.2f;
+            light.color = new Color(1f, 0.97f, 0.9f);
+            lightGo.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+
+            // ── Manager'lar ──
             var managers = new GameObject("GameManagers");
 
-            var wordMgr = managers.AddComponent<Gameplay.WordManager>();
-            SetField(wordMgr, "wordData", wordData);
-
-            // ── LetterSpawner ──
-            var spawnRoot = new GameObject("LetterSpawnRoot");
-            var spawner = spawnRoot.AddComponent<Gameplay.LetterSpawner>();
-            SetField(spawner, "config", config);
-            SetField(spawner, "wordManager", wordMgr);
-            SetField(spawner, "snake", snakeCtrl);
-            var letterPrefabComp = letterPrefab.GetComponent<Gameplay.LetterCollectible>();
-            SetField(spawner, "letterPrefab", letterPrefabComp);
-
-            // ── TrackRecycler ──
-            var recycler = trackParent.AddComponent<Gameplay.TrackRecycler>();
-            SetField(recycler, "snake", snakeGo.transform);
-            SetField(recycler, "tiles", tiles);
-
-            // ── RewardManager ──
+            var gameMgr = managers.AddComponent<Core.GameManager>();
             var rewardMgr = managers.AddComponent<Core.RewardManager>();
-            SetField(rewardMgr, "wordManager", wordMgr);
-            SetField(rewardMgr, "snake", snakeGo.transform);
+            var audioMgr = managers.AddComponent<Audio.AudioManager>();
 
-            // ── Konfeti VFX ──
+            // Ses kaynakları
+            var sfxSrc = managers.AddComponent<AudioSource>();
+            sfxSrc.playOnAwake = false;
+            var musicSrc = managers.AddComponent<AudioSource>();
+            musicSrc.playOnAwake = false;
+            musicSrc.loop = true;
+            musicSrc.volume = 0.3f;
+            SetField(audioMgr, "gameManager", gameMgr);
+            SetField(audioMgr, "sfxSource", sfxSrc);
+            SetField(audioMgr, "musicSource", musicSrc);
+
+            // ── Partiküller ──
+            var particleMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Prefabs/ParticleMat.mat");
+            if (particleMat == null)
+            {
+                particleMat = CreateUrpParticleMaterial();
+                AssetDatabase.CreateAsset(particleMat, "Assets/Prefabs/ParticleMat.mat");
+            }
+
             var confettiGo = new GameObject("Confetti");
             var confettiPS = confettiGo.AddComponent<ParticleSystem>();
             var main = confettiPS.main;
@@ -328,13 +327,8 @@ namespace BurakOyun.Editor
             var shape = confettiPS.shape;
             shape.shapeType = ParticleSystemShapeType.Cone;
             shape.angle = 45f;
-            confettiGo.transform.position = new Vector3(0f, 3f, 5f);
-            var confettiMat = CreateUrpParticleMaterial();
-            AssetDatabase.CreateAsset(confettiMat, "Assets/Prefabs/ParticleMat.mat");
-            confettiGo.GetComponent<ParticleSystemRenderer>().sharedMaterial = confettiMat;
-            SetField(rewardMgr, "confetti", confettiPS);
+            confettiGo.GetComponent<ParticleSystemRenderer>().sharedMaterial = particleMat;
 
-            // Collect sparkle
             var sparkleGo = new GameObject("CollectSparkle");
             var sparklePS = sparkleGo.AddComponent<ParticleSystem>();
             var sparkMain = sparklePS.main;
@@ -342,100 +336,64 @@ namespace BurakOyun.Editor
             sparkMain.startSpeed = 3f;
             sparkMain.startSize = 0.15f;
             sparkMain.maxParticles = 20;
+            sparkMain.simulationSpace = ParticleSystemSimulationSpace.World;
             sparkMain.startColor = new Color(1f, 0.95f, 0.4f);
             sparkMain.playOnAwake = false;
             var sparkEmission = sparklePS.emission;
             sparkEmission.rateOverTime = 0;
             sparkEmission.SetBursts(new[] { new ParticleSystem.Burst(0f, 15) });
-            sparkleGo.GetComponent<ParticleSystemRenderer>().sharedMaterial =
-                AssetDatabase.LoadAssetAtPath<Material>("Assets/Prefabs/ParticleMat.mat");
+            sparkleGo.GetComponent<ParticleSystemRenderer>().sharedMaterial = particleMat;
+
+            SetField(rewardMgr, "gameManager", gameMgr);
+            SetField(rewardMgr, "snake", snakeCtrl);
+            SetField(rewardMgr, "confetti", confettiPS);
             SetField(rewardMgr, "collectSparkle", sparklePS);
 
-            // ── AudioManager ──
-            var audioMgr = managers.AddComponent<Audio.AudioManager>();
-            SetField(audioMgr, "wordManager", wordMgr);
-            var sfxSrc = managers.AddComponent<AudioSource>();
-            sfxSrc.playOnAwake = false;
-            var voiceSrc = managers.gameObject.AddComponent<AudioSource>();
-            voiceSrc.playOnAwake = false;
-            var musicSrc = managers.gameObject.AddComponent<AudioSource>();
-            musicSrc.playOnAwake = false;
-            musicSrc.loop = true;
-            musicSrc.volume = 0.3f;
-            SetField(audioMgr, "sfxSource", sfxSrc);
-            SetField(audioMgr, "voiceSource", voiceSrc);
-            SetField(audioMgr, "musicSource", musicSrc);
+            // ── UI ──
+            var canvas = CreateUICanvas(out var startPanel, out var gameOverPanel,
+                out var scoreTxt, out var bestTxt, out var feedbackTxt, out var gameOverScoreTxt);
 
-            // ── UI Canvas ──
-            var canvas = CreateUICanvas(wordMgr, rewardMgr, out var startPanel, out var completePanel,
-                out var progressTxt, out var starsTxt, out var feedbackTxt);
-
-            // ── UIManager ──
-            var uiMgr = canvas.gameObject.AddComponent<UI.UIManager>();
-            SetField(uiMgr, "wordManager", wordMgr);
-            SetField(uiMgr, "rewardManager", rewardMgr);
-            SetField(uiMgr, "progressText", progressTxt);
-            SetField(uiMgr, "starsText", starsTxt);
+            var uiMgr = canvas.AddComponent<UI.UIManager>();
+            SetField(uiMgr, "gameManager", gameMgr);
+            SetField(uiMgr, "scoreText", scoreTxt);
+            SetField(uiMgr, "bestText", bestTxt);
             SetField(uiMgr, "feedbackText", feedbackTxt);
             SetField(uiMgr, "startPanel", startPanel);
-            SetField(uiMgr, "completePanel", completePanel);
+            SetField(uiMgr, "gameOverPanel", gameOverPanel);
+            SetField(uiMgr, "gameOverScoreText", gameOverScoreTxt);
 
-            // ── GameManager ──
-            var gameMgr = managers.AddComponent<Core.GameManager>();
+            // GameManager bağlantıları
             SetField(gameMgr, "snake", snakeCtrl);
-            SetField(gameMgr, "spawner", spawner);
-            SetField(gameMgr, "wordManager", wordMgr);
-            SetField(gameMgr, "rewardManager", rewardMgr);
+            SetField(gameMgr, "foodSpawner", foodSpawner);
             SetField(gameMgr, "ui", uiMgr);
 
             // Butonları bağla
             var startBtn = startPanel.GetComponentInChildren<Button>();
-            var replayBtn = completePanel.GetComponentInChildren<Button>();
+            var replayBtn = gameOverPanel.GetComponentInChildren<Button>(true);
             if (startBtn != null)
-            {
-                UnityEditor.Events.UnityEventTools.AddPersistentListener(
-                    startBtn.onClick, gameMgr.StartGame);
-            }
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(startBtn.onClick, gameMgr.StartGame);
             if (replayBtn != null)
-            {
-                UnityEditor.Events.UnityEventTools.AddPersistentListener(
-                    replayBtn.onClick, gameMgr.Replay);
-            }
-
-            // ── Işık ──
-            if (Object.FindFirstObjectByType<Light>() == null)
-            {
-                var lightGo = new GameObject("Directional Light");
-                var light = lightGo.AddComponent<Light>();
-                light.type = LightType.Directional;
-                light.intensity = 1.2f;
-                light.color = new Color(1f, 0.97f, 0.9f);
-                lightGo.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
-            }
-
-            // ── Skybox / Arka plan rengi ──
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.53f, 0.81f, 0.98f); // açık gökyüzü mavisi
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(replayBtn.onClick, gameMgr.Replay);
 
             AssetDatabase.SaveAssets();
             EditorUtility.SetDirty(managers);
 
-            // Sahneyi diske kaydet + Build Settings'e ekle (yoksa yeniden açılışta kaybolur)
+            // Sahneyi kaydet + Build Settings'e ekle
             EnsureFolder("Assets/Scenes");
             const string scenePath = "Assets/Scenes/Game.unity";
             var active = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
             EditorSceneManager.SaveScene(active, scenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(scenePath, true) };
 
-            Debug.Log("[BurakOyun] ✓ Sahne kuruldu ve 'Assets/Scenes/Game.unity' olarak kaydedildi (Build Settings'e eklendi). Play'e bas, OYNA'ya tıkla, ok tuşlarıyla oyna.");
+            Debug.Log("[BurakOyun] ✓ Yılan oyunu sahnesi kuruldu ve 'Assets/Scenes/Game.unity' olarak kaydedildi. " +
+                      "Play'e bas, OYNA'ya tıkla, WASD/ok tuşlarıyla oyna.");
         }
 
-        static GameObject CreateUICanvas(Gameplay.WordManager wordMgr,
-            Core.RewardManager rewardMgr,
-            out GameObject startPanel, out GameObject completePanel,
-            out TMP_Text progressTxt, out TMP_Text starsTxt, out TMP_Text feedbackTxt)
+        static GameObject CreateUICanvas(
+            out GameObject startPanel, out GameObject gameOverPanel,
+            out TMP_Text scoreTxt, out TMP_Text bestTxt, out TMP_Text feedbackTxt,
+            out TMP_Text gameOverScoreTxt)
         {
-            // Canvas
             var canvasGo = new GameObject("UI Canvas");
             var canvas = canvasGo.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -453,30 +411,30 @@ namespace BurakOyun.Editor
                 es.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
             }
 
-            // Progress text (üst orta)
-            progressTxt = CreateTMPText(canvasGo.transform, "ProgressText",
-                "B U R A K", 72, TextAlignmentOptions.Center,
-                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -40f),
-                new Vector2(800f, 100f));
-
-            // Stars text (sol üst)
-            starsTxt = CreateTMPText(canvasGo.transform, "StarsText",
-                "★ 0", 48, TextAlignmentOptions.TopLeft,
+            // Skor (sol üst)
+            scoreTxt = CreateTMPText(canvasGo.transform, "ScoreText",
+                "Skor: 0", 56, TextAlignmentOptions.TopLeft,
                 new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(40f, -40f),
-                new Vector2(200f, 80f));
-            starsTxt.color = new Color(1f, 0.85f, 0.1f);
+                new Vector2(400f, 80f));
+            scoreTxt.color = new Color(1f, 0.85f, 0.1f);
 
-            // Feedback text (orta)
+            // En iyi skor (sağ üst)
+            bestTxt = CreateTMPText(canvasGo.transform, "BestText",
+                "En İyi: 0", 48, TextAlignmentOptions.TopRight,
+                new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-40f, -40f),
+                new Vector2(400f, 80f));
+            bestTxt.color = new Color(1f, 1f, 1f, 0.9f);
+
+            // Feedback (orta üst)
             feedbackTxt = CreateTMPText(canvasGo.transform, "FeedbackText",
                 "", 64, TextAlignmentOptions.Center,
-                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 50f),
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 120f),
                 new Vector2(600f, 100f));
             feedbackTxt.color = new Color(1f, 0.5f, 0.1f);
 
             // ── Start Panel ──
-            startPanel = CreatePanel(canvasGo.transform, "StartPanel",
-                new Color(0f, 0f, 0f, 0.5f));
-            CreateTMPText(startPanel.transform, "Title", "BURAK\nHarf Oyunu", 80,
+            startPanel = CreatePanel(canvasGo.transform, "StartPanel", new Color(0f, 0f, 0f, 0.5f));
+            CreateTMPText(startPanel.transform, "Title", "BURAK\nYılan Oyunu", 80,
                 TextAlignmentOptions.Center,
                 new Vector2(0.5f, 0.65f), new Vector2(0.5f, 0.65f), Vector2.zero,
                 new Vector2(800f, 250f));
@@ -484,17 +442,21 @@ namespace BurakOyun.Editor
                 new Vector2(0.5f, 0.35f), new Vector2(350f, 120f),
                 new Color(0.2f, 0.8f, 0.3f));
 
-            // ── Complete Panel ──
-            completePanel = CreatePanel(canvasGo.transform, "CompletePanel",
-                new Color(0f, 0f, 0f, 0.5f));
-            CreateTMPText(completePanel.transform, "CompleteTitle", "HARİKA!\nBURAK", 80,
+            // ── Game Over Panel ──
+            gameOverPanel = CreatePanel(canvasGo.transform, "GameOverPanel", new Color(0f, 0f, 0f, 0.5f));
+            CreateTMPText(gameOverPanel.transform, "GameOverTitle", "Oyun Bitti! :)", 80,
                 TextAlignmentOptions.Center,
-                new Vector2(0.5f, 0.65f), new Vector2(0.5f, 0.65f), Vector2.zero,
-                new Vector2(800f, 250f));
-            CreateButton(completePanel.transform, "BtnReplay", "TEKRAR OYNA",
-                new Vector2(0.5f, 0.35f), new Vector2(400f, 120f),
+                new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero,
+                new Vector2(800f, 150f));
+            gameOverScoreTxt = CreateTMPText(gameOverPanel.transform, "GameOverScore", "Skor: 0", 64,
+                TextAlignmentOptions.Center,
+                new Vector2(0.5f, 0.55f), new Vector2(0.5f, 0.55f), Vector2.zero,
+                new Vector2(800f, 180f));
+            gameOverScoreTxt.color = new Color(1f, 0.85f, 0.1f);
+            CreateButton(gameOverPanel.transform, "BtnReplay", "TEKRAR OYNA",
+                new Vector2(0.5f, 0.3f), new Vector2(400f, 120f),
                 new Color(0.3f, 0.6f, 1f));
-            completePanel.SetActive(false);
+            gameOverPanel.SetActive(false);
 
             return canvasGo;
         }
@@ -551,7 +513,6 @@ namespace BurakOyun.Editor
             var btn = go.AddComponent<Button>();
             btn.targetGraphic = img;
 
-            // Buton üstüne yazı
             var txtGo = new GameObject("Label");
             txtGo.transform.SetParent(go.transform, false);
             var tmp = txtGo.AddComponent<TextMeshProUGUI>();
@@ -580,12 +541,6 @@ namespace BurakOyun.Editor
             }
             if (value is Object obj)
                 prop.objectReferenceValue = obj;
-            else if (value is Transform[] transforms)
-            {
-                prop.arraySize = transforms.Length;
-                for (int i = 0; i < transforms.Length; i++)
-                    prop.GetArrayElementAtIndex(i).objectReferenceValue = transforms[i];
-            }
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 

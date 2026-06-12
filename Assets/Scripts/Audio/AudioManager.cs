@@ -1,23 +1,22 @@
 using UnityEngine;
-using BurakOyun.Gameplay;
+using BurakOyun.Core;
 
 namespace BurakOyun.Audio
 {
     /// <summary>
-    /// Tüm sesler lokal AudioClip. Yumuşak SFX — korkutucu ses yasak.
-    /// Harf sesleri WordData'dan gelir (char → clip).
+    /// Tüm sesler lokal AudioClip (boşsa SfxGenerator üretir). Yumuşak SFX — korkutucu ses yasak.
+    /// Yem → ding, oyun sonu → komik boing, yeni rekor → alkış.
     /// </summary>
     public class AudioManager : MonoBehaviour
     {
-        [SerializeField] private WordManager wordManager;
+        [SerializeField] private GameManager gameManager;
         [SerializeField] private AudioSource sfxSource;
-        [SerializeField] private AudioSource voiceSource;
         [SerializeField] private AudioSource musicSource;
 
         [Header("SFX (yumuşak!)")]
-        [SerializeField] private AudioClip dingClip;     // doğru harf
-        [SerializeField] private AudioClip boingClip;    // yanlış harf (komik, korkutucu değil)
-        [SerializeField] private AudioClip applauseClip; // kelime tamam
+        [SerializeField] private AudioClip dingClip;     // yem yendi
+        [SerializeField] private AudioClip boingClip;    // çarpma (komik, korkutucu değil)
+        [SerializeField] private AudioClip applauseClip; // yeni rekor
 
         private void Awake()
         {
@@ -28,38 +27,30 @@ namespace BurakOyun.Audio
 
         private void OnEnable()
         {
-            wordManager.OnCorrectLetter += HandleCorrect;
-            wordManager.OnWrongLetter += HandleWrong;
-            wordManager.OnWordComplete += HandleComplete;
+            gameManager.OnScoreChanged += HandleScore;
+            gameManager.OnGameOver += HandleGameOver;
         }
 
         private void OnDisable()
         {
-            wordManager.OnCorrectLetter -= HandleCorrect;
-            wordManager.OnWrongLetter -= HandleWrong;
-            wordManager.OnWordComplete -= HandleComplete;
+            gameManager.OnScoreChanged -= HandleScore;
+            gameManager.OnGameOver -= HandleGameOver;
         }
 
-        private void HandleCorrect(char letter, int index)
+        private void HandleScore(int score)
         {
-            Play(sfxSource, dingClip);
-            var clip = wordManager.WordData != null ? wordManager.WordData.GetLetterClip(letter) : null;
-            if (clip == null) clip = SfxGenerator.CreateLetterSound(letter);
-            Play(voiceSource, clip);
+            if (score > 0) Play(dingClip); // 0 = oyun başı, ses yok
         }
 
-        private void HandleWrong(char letter) => Play(sfxSource, boingClip);
-
-        private void HandleComplete()
+        private void HandleGameOver(int score, bool newBest)
         {
-            Play(sfxSource, applauseClip);
-            if (wordManager.WordData != null)
-                Play(voiceSource, wordManager.WordData.wordAudio);
+            Play(boingClip);
+            if (newBest) Play(applauseClip);
         }
 
-        private static void Play(AudioSource source, AudioClip clip)
+        private void Play(AudioClip clip)
         {
-            if (source != null && clip != null) source.PlayOneShot(clip);
+            if (sfxSource != null && clip != null) sfxSource.PlayOneShot(clip);
         }
     }
 }

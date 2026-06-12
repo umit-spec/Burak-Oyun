@@ -4,33 +4,29 @@ namespace BurakOyun.Data
 {
     /// <summary>
     /// Tüm oynanış ayarları tek yerden (designer-friendly).
-    /// Ev testinden sonra hız/aralık buradan ayarlanır, kod değişmez.
+    /// Ev testinden sonra hız/ızgara buradan ayarlanır, kod değişmez.
     /// </summary>
     [CreateAssetMenu(fileName = "GameConfig", menuName = "BurakOyun/Game Config")]
     public class GameConfig : ScriptableObject
     {
-        [Header("Yılan Hareketi")]
-        [Tooltip("İleri hız (m/sn). Çocuk dostu yavaş tempo: 3-5 arası.")]
-        public float forwardSpeed = 4f;
-        [Tooltip("Şeritler arası mesafe (m).")]
-        public float laneWidth = 2.5f;
-        [Tooltip("Şerit değiştirme yumuşaklığı (büyük = hızlı geçiş).")]
-        public float laneChangeSpeed = 8f;
+        [Header("Izgara")]
+        [Tooltip("Izgara genişliği (hücre).")]
+        public int gridWidth = 20;
+        [Tooltip("Izgara yüksekliği (hücre).")]
+        public int gridHeight = 15;
+        [Tooltip("Bir hücrenin dünya boyutu (m).")]
+        public float cellSize = 1f;
 
-        [Header("Yanlış Harf (yumuşak geri bildirim, ceza değil)")]
-        [Range(0.1f, 1f)] public float slowdownFactor = 0.7f;
-        public float slowdownDuration = 2f;
+        [Header("Yılan")]
+        [Tooltip("Hücre başına saniye. Çocuk dostu yavaş tempo: 0.25-0.35.")]
+        public float tickRate = 0.3f;
+        [Tooltip("Başlangıç uzunluğu (baş dahil).")]
+        public int initialLength = 3;
 
-        [Header("Harf Spawn")]
-        [Tooltip("Dalgalar arası süre (sn). ~10 sn → 1 dk'da kelime biter.")]
-        public float spawnInterval = 9f;
-        [Tooltip("Yanlış (çeldirici) harf sayısı: 1 veya 2.")]
-        [Range(1, 2)] public int decoyCount = 2;
-        [Tooltip("Harflerin yılanın ne kadar önünde belireceği (m).")]
-        public float spawnDistance = 45f;
-        [Tooltip("Yılanın arkasında kalınca despawn mesafesi (m).")]
-        public float despawnBehind = 5f;
-        [Tooltip("Çeldirici havuzu (Türk alfabesi, büyük harf).")]
-        public string decoyAlphabet = "ABCÇDEFGHIİJKLMNOÖPRSŞTUÜVYZ";
+        [Header("Zorluk (çocuk dostu — yumuşak hızlanma)")]
+        [Tooltip("Her yemekte tick bu kadar kısalır (0 = hiç hızlanmaz).")]
+        public float speedUpPerFood = 0.003f;
+        [Tooltip("Tick süresi taban sınırı — oyun asla bundan hızlı olmaz.")]
+        public float minTickRate = 0.18f;
     }
 }
