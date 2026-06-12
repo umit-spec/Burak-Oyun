@@ -155,5 +155,59 @@ namespace BurakOyun.Tests.PlayMode
             Object.Destroy(snakeGo);
             yield return null;
         }
+
+        [UnityTest]
+        public IEnumerator Duraklat_YilaniDurdurur_DevamKaldiginiSurdurur()
+        {
+            var config = SmallConfig();
+
+            var snakeGo = new GameObject("SnakeRig");
+            snakeGo.SetActive(false);
+            snakeGo.AddComponent<DirectionInput>();
+            var snake = snakeGo.AddComponent<SnakeController>();
+            SetPrivate(snake, "config", config);
+
+            var foodGo = new GameObject("FoodRig");
+            var food = foodGo.AddComponent<FoodSpawner>();
+            SetPrivate(food, "config", config);
+            SetPrivate(food, "snake", snake);
+            SetPrivate(snake, "foodSpawner", food);
+
+            var gmGo = new GameObject("GameManagerRig");
+            gmGo.SetActive(false);
+            var gm = gmGo.AddComponent<GameManager>();
+            SetPrivate(gm, "snake", snake);
+            SetPrivate(gm, "foodSpawner", food);
+
+            snakeGo.SetActive(true);
+            gmGo.SetActive(true);
+            yield return null;
+
+            gm.StartGame();
+            Assert.AreEqual(GameState.Playing, gm.State.Current);
+            var headBefore = snake.Body.HeadPosition;
+
+            // Duraklat: yilan durur, durum Paused, bas kimildamaz
+            gm.Pause();
+            Assert.IsTrue(gm.IsPaused);
+            Assert.AreEqual(GameState.Paused, gm.State.Current);
+            Assert.IsFalse(snake.IsMoving, "Pause yilani durdurmali");
+            Assert.AreEqual(headBefore, snake.Body.HeadPosition, "Pause sirasinda bas kimildamamali");
+
+            // Devam: hareket surer, durum Playing, kaldigi yerden ilerler
+            gm.Resume();
+            Assert.IsFalse(gm.IsPaused);
+            Assert.AreEqual(GameState.Playing, gm.State.Current);
+            Assert.IsTrue(snake.IsMoving, "Resume hareketi surdurmeli");
+
+            snake.Step();
+            Assert.AreEqual(new Vector2Int(headBefore.x + 1, headBefore.y), snake.Body.HeadPosition,
+                "Resume kaldigi yerden devam etmeli (saga 1 hucre)");
+
+            Object.Destroy(snakeGo);
+            Object.Destroy(foodGo);
+            Object.Destroy(gmGo);
+            yield return null;
+        }
     }
 }

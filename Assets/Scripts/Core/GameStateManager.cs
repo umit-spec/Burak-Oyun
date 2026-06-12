@@ -2,7 +2,7 @@ using System;
 
 namespace BurakOyun.Core
 {
-    public enum GameState { Menu, Playing, GameOver }
+    public enum GameState { Menu, Playing, Paused, GameOver }
 
     /// <summary>
     /// Basit durum makinesi. MonoBehaviour değil — GameManager sahiplenir, unit-test edilebilir.

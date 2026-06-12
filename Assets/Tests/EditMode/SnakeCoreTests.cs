@@ -193,6 +193,41 @@ namespace BurakOyun.Tests
 
             Object.DestroyImmediate(go);
         }
+
+        [Test]
+        public void TrySwipeToDirection_BaskinEksenYonuVerir()
+        {
+            Assert.IsTrue(DirectionInput.TrySwipeToDirection(new Vector2(60f, 5f), 50f, out var r));
+            Assert.AreEqual(Direction.Right, r);
+            Assert.IsTrue(DirectionInput.TrySwipeToDirection(new Vector2(-80f, 10f), 50f, out var l));
+            Assert.AreEqual(Direction.Left, l);
+            Assert.IsTrue(DirectionInput.TrySwipeToDirection(new Vector2(8f, 70f), 50f, out var u));
+            Assert.AreEqual(Direction.Up, u);   // ekran +Y yukari = Direction.Up
+            Assert.IsTrue(DirectionInput.TrySwipeToDirection(new Vector2(-3f, -90f), 50f, out var d));
+            Assert.AreEqual(Direction.Down, d);
+        }
+
+        [Test]
+        public void TrySwipeToDirection_EsikAltiYutulur()
+        {
+            // Kucuk parmak titremesi yon sayilmamali
+            Assert.IsFalse(DirectionInput.TrySwipeToDirection(new Vector2(20f, 20f), 50f, out _));
+        }
+
+        [Test]
+        public void Swipe_TersYon_GuvenlikleHalaYutulur()
+        {
+            // Saga giderken sola kaydirma: swipe Enqueue eder ama TryGetNextDirection ters yonu atar.
+            var go = new GameObject("InputRig");
+            var input = go.AddComponent<DirectionInput>();
+
+            Assert.IsTrue(DirectionInput.TrySwipeToDirection(new Vector2(-90f, 0f), 50f, out var dir));
+            Assert.AreEqual(Direction.Left, dir);
+            input.Enqueue(dir);
+            Assert.IsFalse(input.TryGetNextDirection(Direction.Right, out _)); // ters yon yutuldu
+
+            Object.DestroyImmediate(go);
+        }
     }
 
     public class GameStateManagerTests

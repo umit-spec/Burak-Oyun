@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using BurakOyun.Gameplay;
 using BurakOyun.UI;
 
@@ -23,6 +24,8 @@ namespace BurakOyun.Core
         public event Action OnGameStarted;
         /// <summary>(skor, yeni rekor mu)</summary>
         public event Action<int, bool> OnGameOver;
+
+        public bool IsPaused => State.Current == GameState.Paused;
 
         private void OnEnable()
         {
@@ -49,12 +52,43 @@ namespace BurakOyun.Core
             {
                 ui.ShowStart(false);
                 ui.ShowGameOver(false);
+                ui.ShowPause(false);
             }
             OnScoreChanged?.Invoke(Score);
             OnGameStarted?.Invoke();
         }
 
         public void Replay() => StartGame();
+
+        private void Update()
+        {
+            var kb = Keyboard.current;
+            if (kb != null && (kb.pKey.wasPressedThisFrame || kb.escapeKey.wasPressedThisFrame))
+                TogglePause();
+        }
+
+        /// Pause butonuna ve P/Escape'e bağlanır.
+        public void TogglePause()
+        {
+            if (State.Current == GameState.Playing) Pause();
+            else if (State.Current == GameState.Paused) Resume();
+        }
+
+        public void Pause()
+        {
+            if (State.Current != GameState.Playing) return;
+            snake.IsMoving = false; // yılan duraklatıldığında hareket etmez
+            State.SetState(GameState.Paused);
+            if (ui != null) ui.ShowPause(true);
+        }
+
+        public void Resume()
+        {
+            if (State.Current != GameState.Paused) return;
+            snake.IsMoving = true; // kaldığı yerden devam (gövde/skor korunur)
+            State.SetState(GameState.Playing);
+            if (ui != null) ui.ShowPause(false);
+        }
 
         private void HandleAte()
         {

@@ -19,6 +19,7 @@ namespace BurakOyun.UI
         [SerializeField] private GameObject startPanel;     // büyük OYNA butonu
         [SerializeField] private GameObject gameOverPanel;  // skor + TEKRAR OYNA
         [SerializeField] private TMP_Text gameOverScoreText;
+        [SerializeField] private GameObject pausePanel;     // DURAKLATILDI + DEVAM ET
 
         [SerializeField] private float feedbackDuration = 1.2f;
         private float feedbackTimer;
@@ -38,6 +39,7 @@ namespace BurakOyun.UI
         {
             ShowStart(true);
             ShowGameOver(false);
+            ShowPause(false);
             RefreshScore(0);
             RefreshBest();
             if (feedbackText != null) feedbackText.text = "";
@@ -68,6 +70,11 @@ namespace BurakOyun.UI
         public void ShowGameOver(bool show)
         {
             if (gameOverPanel != null) gameOverPanel.SetActive(show);
+        }
+
+        public void ShowPause(bool show)
+        {
+            if (pausePanel != null) pausePanel.SetActive(show);
         }
 
         /// <summary>Oyun sonu panelini skorla doldurup gösterir.</summary>

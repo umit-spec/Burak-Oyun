@@ -351,7 +351,8 @@ namespace BurakOyun.Editor
 
             // ── UI ──
             var canvas = CreateUICanvas(out var startPanel, out var gameOverPanel,
-                out var scoreTxt, out var bestTxt, out var feedbackTxt, out var gameOverScoreTxt);
+                out var scoreTxt, out var bestTxt, out var feedbackTxt, out var gameOverScoreTxt,
+                out var pausePanel, out var pauseBtn);
 
             var uiMgr = canvas.AddComponent<UI.UIManager>();
             SetField(uiMgr, "gameManager", gameMgr);
@@ -361,6 +362,7 @@ namespace BurakOyun.Editor
             SetField(uiMgr, "startPanel", startPanel);
             SetField(uiMgr, "gameOverPanel", gameOverPanel);
             SetField(uiMgr, "gameOverScoreText", gameOverScoreTxt);
+            SetField(uiMgr, "pausePanel", pausePanel);
 
             // GameManager bağlantıları
             SetField(gameMgr, "snake", snakeCtrl);
@@ -370,10 +372,15 @@ namespace BurakOyun.Editor
             // Butonları bağla
             var startBtn = startPanel.GetComponentInChildren<Button>();
             var replayBtn = gameOverPanel.GetComponentInChildren<Button>(true);
+            var resumeBtn = pausePanel.GetComponentInChildren<Button>(true);
             if (startBtn != null)
                 UnityEditor.Events.UnityEventTools.AddPersistentListener(startBtn.onClick, gameMgr.StartGame);
             if (replayBtn != null)
                 UnityEditor.Events.UnityEventTools.AddPersistentListener(replayBtn.onClick, gameMgr.Replay);
+            if (pauseBtn != null)
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(pauseBtn.onClick, gameMgr.Pause);
+            if (resumeBtn != null)
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(resumeBtn.onClick, gameMgr.Resume);
 
             AssetDatabase.SaveAssets();
             EditorUtility.SetDirty(managers);
@@ -386,13 +393,13 @@ namespace BurakOyun.Editor
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(scenePath, true) };
 
             Debug.Log("[BurakOyun] ✓ Yılan oyunu sahnesi kuruldu ve 'Assets/Scenes/Game.unity' olarak kaydedildi. " +
-                      "Play'e bas, OYNA'ya tıkla, WASD/ok tuşlarıyla oyna.");
+                      "Play'e bas, OYNA'ya tıkla, WASD/ok tuşları veya parmakla kaydırarak oyna; P/Escape veya II butonuyla duraklat.");
         }
 
         static GameObject CreateUICanvas(
             out GameObject startPanel, out GameObject gameOverPanel,
             out TMP_Text scoreTxt, out TMP_Text bestTxt, out TMP_Text feedbackTxt,
-            out TMP_Text gameOverScoreTxt)
+            out TMP_Text gameOverScoreTxt, out GameObject pausePanel, out Button pauseButton)
         {
             var canvasGo = new GameObject("UI Canvas");
             var canvas = canvasGo.AddComponent<Canvas>();
@@ -439,8 +446,21 @@ namespace BurakOyun.Editor
                 new Vector2(0.5f, 0.65f), new Vector2(0.5f, 0.65f), Vector2.zero,
                 new Vector2(800f, 250f));
             CreateButton(startPanel.transform, "BtnPlay", "OYNA",
-                new Vector2(0.5f, 0.35f), new Vector2(350f, 120f),
+                new Vector2(0.5f, 0.42f), new Vector2(350f, 120f),
                 new Color(0.2f, 0.8f, 0.3f));
+            // Çocuk dostu kontrol yönergesi (6 yaş tablette ilk açılışta anlasın)
+            var hint = CreateTMPText(startPanel.transform, "ControlHint",
+                "Parmağınla KAYDIR!\nYukarı  •  Aşağı  •  Sol  •  Sağ\n(veya ok tuşları)", 46,
+                TextAlignmentOptions.Center,
+                new Vector2(0.5f, 0.22f), new Vector2(0.5f, 0.22f), Vector2.zero,
+                new Vector2(1000f, 220f));
+            hint.color = new Color(1f, 0.95f, 0.7f);
+
+            // ── HUD Duraklat butonu (üst orta, her zaman görünür) ──
+            pauseButton = CreateButton(canvasGo.transform, "BtnPause", "II",
+                new Vector2(0.5f, 1f), new Vector2(120f, 90f),
+                new Color(0.2f, 0.5f, 0.9f));
+            pauseButton.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, -60f);
 
             // ── Game Over Panel ──
             gameOverPanel = CreatePanel(canvasGo.transform, "GameOverPanel", new Color(0f, 0f, 0f, 0.5f));
@@ -457,6 +477,17 @@ namespace BurakOyun.Editor
                 new Vector2(0.5f, 0.3f), new Vector2(400f, 120f),
                 new Color(0.3f, 0.6f, 1f));
             gameOverPanel.SetActive(false);
+
+            // ── Pause Panel ──
+            pausePanel = CreatePanel(canvasGo.transform, "PausePanel", new Color(0f, 0f, 0f, 0.6f));
+            CreateTMPText(pausePanel.transform, "PauseTitle", "DURAKLATILDI", 80,
+                TextAlignmentOptions.Center,
+                new Vector2(0.5f, 0.6f), new Vector2(0.5f, 0.6f), Vector2.zero,
+                new Vector2(800f, 150f));
+            CreateButton(pausePanel.transform, "BtnResume", "DEVAM ET",
+                new Vector2(0.5f, 0.38f), new Vector2(400f, 120f),
+                new Color(0.2f, 0.8f, 0.3f));
+            pausePanel.SetActive(false);
 
             return canvasGo;
         }
