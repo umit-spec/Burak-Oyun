@@ -28,16 +28,22 @@ namespace BurakOyun.UI
         [Header("Heceleme Modu UI")]
         [SerializeField] private TMP_Text spellingText;     // kelime ilerleyişi örn: "U Z A [Y]"
 
+        private static readonly Color PositiveColor = Color.white;
+        private static readonly Color OopsColor = new Color(0.97f, 0.32f, 0.32f);   // kırmızı uyarı
+        private static readonly Color CelebrateColor = new Color(1f, 0.84f, 0.1f);  // altın kutlama
+
         private void OnEnable()
         {
             gameManager.OnScoreChanged += HandleScore;
             gameManager.OnWordProgressChanged += HandleWordProgress;
+            gameManager.OnWordCompleted += HandleWordCompleted;
         }
 
         private void OnDisable()
         {
             gameManager.OnScoreChanged -= HandleScore;
             gameManager.OnWordProgressChanged -= HandleWordProgress;
+            gameManager.OnWordCompleted -= HandleWordCompleted;
         }
 
         private void Start()
@@ -97,7 +103,15 @@ namespace BurakOyun.UI
 
         public void ShowOopsFeedback()
         {
-            ShowFeedback("Oops! Başka Yöne! ✨");
+            // Kırmızı renk + ekstra büyük zıplama: 6 yaş için fark edilir görsel uyarı (B-09).
+            ShowFeedback("Oops! Baska Yone!", OopsColor);
+            feedbackScale = 1.9f;
+        }
+
+        private void HandleWordCompleted(string word)
+        {
+            // Kelime tamamlandı: Burak için büyük, neşeli altın kutlama (B-04).
+            ShowFeedback($"AFERIN!  {word} TAMAM!", CelebrateColor);
         }
 
         private void HandleWordProgress(string word, int letterIndex)
@@ -130,7 +144,7 @@ namespace BurakOyun.UI
         {
             RefreshScore(score);
             if (score > 0) // 0 = oyun başı
-                ShowFeedback(score % 5 == 0 ? "HARİKA! 🚀" : "Aferin! ⭐");
+                ShowFeedback(score % 5 == 0 ? "HARIKA!" : "Aferin!");
         }
 
         private void RefreshScore(int score)
@@ -143,10 +157,11 @@ namespace BurakOyun.UI
             if (bestText != null) bestText.text = "En İyi: " + SaveManager.BestScore;
         }
 
-        private void ShowFeedback(string msg)
+        private void ShowFeedback(string msg, Color? color = null)
         {
             if (feedbackText == null) return;
             feedbackText.text = msg;
+            feedbackText.color = color ?? PositiveColor; // her seferinde deterministik renk
             feedbackTimer = feedbackDuration;
             feedbackScale = 1.4f;
         }

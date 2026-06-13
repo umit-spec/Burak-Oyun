@@ -58,6 +58,7 @@ namespace BurakOyun.Gameplay
 
         private MaterialPropertyBlock mpb;
         private Renderer headRenderer;
+        private Color appliedHeadColor = Color.white; // config.spaceshipHeadColor — flaş sonrası geri yükleme için saklanır
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
         private void Awake()
@@ -137,7 +138,10 @@ namespace BurakOyun.Gameplay
             if (segmentPrefab == null) return; // salt-mantık modu (testler)
 
             if (headVisual == null && headPrefab != null)
+            {
                 headVisual = Instantiate(headPrefab, transform);
+                ApplyHeadColor(); // uzay mekiği kafa rengini config'ten uygula (B-05)
+            }
 
             int needed = Body.Length - 1; // baş hariç gövde segmenti sayısı
             while (bodyVisuals.Count < needed)
@@ -194,6 +198,28 @@ namespace BurakOyun.Gameplay
             r.SetPropertyBlock(mpb);
         }
 
+        // Baş görselini (uzay mekiği) GameConfig.spaceshipHeadColor ile boyar — MPB ile,
+        // paylaşılan materyali kirletmeden. Renk, ölüm flaşı sonrası geri yükleme için saklanır.
+        private void ApplyHeadColor()
+        {
+            EnsureHeadRenderer();
+            if (headRenderer == null) return;
+            if (mpb == null) mpb = new MaterialPropertyBlock();
+            appliedHeadColor = config.spaceshipHeadColor;
+            headRenderer.GetPropertyBlock(mpb);
+            mpb.SetColor(BaseColorId, appliedHeadColor);
+            headRenderer.SetPropertyBlock(mpb);
+        }
+
+        // Baş renderer'ını bir kez çözer (Cube alt-objesi varsa onu, yoksa ilk child renderer'ı).
+        private void EnsureHeadRenderer()
+        {
+            if (headRenderer != null || headVisual == null) return;
+            var cube = headVisual.transform.Find("Cube");
+            headRenderer = cube != null ? cube.GetComponent<Renderer>()
+                                        : headVisual.GetComponentInChildren<Renderer>();
+        }
+
         private void Push(Transform tr, Vector3 source, Vector3 target, bool placeNow)
         {
             visualTr.Add(tr); fromPos.Add(source); toPos.Add(target);
@@ -215,23 +241,24 @@ namespace BurakOyun.Gameplay
         /// </summary>
         public void PlayHurtFeedback()
         {
-            if (headVisual == null) return;
+            if (headVisual == null)
+            {
+                // Salt-mantık modu (görsel yok): animasyon yok, ama bağışlayıcı modda
+                // hareketin sürmesi için IsMoving'i geri aç (B-02).
+                IsMoving = true;
+                return;
+            }
             StopCoroutine(nameof(HurtRoutine));
             StartCoroutine(nameof(HurtRoutine));
         }
 
         private IEnumerator HurtRoutine()
         {
-            if (headRenderer == null)
-            {
-                var cube = headVisual.transform.Find("Cube");
-                headRenderer = cube != null ? cube.GetComponent<Renderer>()
-                                            : headVisual.GetComponentInChildren<Renderer>();
-            }
+            EnsureHeadRenderer();
             if (mpb == null) mpb = new MaterialPropertyBlock();
 
             Vector3 basePos = headVisual.transform.position;
-            Color baseColor = headRenderer != null ? headRenderer.sharedMaterial.color : Color.white;
+            Color baseColor = appliedHeadColor; // flaş sonrası uzay mekiği rengine geri dön
 
             float t = 0f;
             while (t < hurtDuration)
@@ -259,6 +286,9 @@ namespace BurakOyun.Gameplay
                 mpb.SetColor(BaseColorId, baseColor);
                 headRenderer.SetPropertyBlock(mpb);
             }
+
+            // Geri bildirim bitti: bağışlayıcı modda yılan kaldığı yerden devam etsin (B-02).
+            IsMoving = true;
         }
     }
 }

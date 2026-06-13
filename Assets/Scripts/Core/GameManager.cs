@@ -168,11 +168,9 @@ namespace BurakOyun.Core
                 ui.ShowOopsFeedback();
             }
 
-            // Harekete devam etmesi içinIsMoving'i tekrar açalım ve yılanı devam ettirelim
-            if (snake != null)
-            {
-                snake.IsMoving = true;
-            }
+            // IsMoving'i burada AÇMIYORUZ: yılan, ölüm geri bildirimi (HurtRoutine) bitince
+            // kendini sürdürür. Böylece "dur → sars → devam et" sırası garanti olur; çarpışma
+            // anında aynı tick içinde tekrar çarpıp "Oops" spam'ine yol açmaz. (B-02)
         }
 
         private void EndGame()

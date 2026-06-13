@@ -14,6 +14,7 @@ namespace BurakOyun.Gameplay
     {
         [SerializeField] private GameConfig config;
         [SerializeField] private SnakeController snake;
+        [SerializeField] private GameManager gameManager; // harf gösterimi için (boş = salt-mantık modu)
         [SerializeField] private GameObject foodPrefab; // boş = salt-mantık modu (testler)
         [SerializeField] private float foodHeight = 0.5f;
         [SerializeField] private float spinSpeed = 90f;
@@ -61,12 +62,12 @@ namespace BurakOyun.Gameplay
             
             if (tmp != null)
             {
-                // GameManager'dan o anki kelimeyi ve harf indeksini çekip yazdır
-                var gm = FindFirstObjectByType<GameManager>();
-                if (gm != null)
+                // GameManager'dan o anki kelimeyi ve harf indeksini çekip yazdır.
+                // Doğrudan referans (her spawn'da FindFirstObjectByType sahne taraması yok).
+                if (gameManager != null)
                 {
-                    string word = gm.currentWord;
-                    int idx = gm.currentLetterIndex;
+                    string word = gameManager.currentWord;
+                    int idx = gameManager.currentLetterIndex;
                     if (!string.IsNullOrEmpty(word) && idx < word.Length)
                     {
                         tmp.text = word[idx].ToString();

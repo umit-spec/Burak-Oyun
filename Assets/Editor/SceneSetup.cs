@@ -267,8 +267,8 @@ namespace BurakOyun.Editor
 
             // ── Dama desenli zemin (çocuk hücreleri görsün) ──
             var board = new GameObject("Board");
-            var groundA = GetOrCreateMaterial("Assets/Prefabs/GroundMat.mat", new Color(0.64f, 0.86f, 0.66f), 0.1f);
-            var groundB = GetOrCreateMaterial("Assets/Prefabs/GroundMatAlt.mat", new Color(0.74f, 0.92f, 0.74f), 0.1f);
+            var groundA = GetOrCreateMaterial("Assets/Prefabs/GroundMat.mat", new Color(0.12f, 0.12f, 0.22f), 0.1f);
+            var groundB = GetOrCreateMaterial("Assets/Prefabs/GroundMatAlt.mat", new Color(0.16f, 0.16f, 0.28f), 0.1f);
             for (int x = 0; x < config.gridWidth; x++)
                 for (int y = 0; y < config.gridHeight; y++)
                 {
@@ -341,22 +341,12 @@ namespace BurakOyun.Editor
             camGo.AddComponent<AudioListener>();
             cam.transform.position = new Vector3(0f, boardH * 1.15f, -boardH * 0.85f);
             cam.transform.LookAt(new Vector3(0f, 0f, -boardH * 0.05f));
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.06f, 0.06f, 0.13f);
 
-            // ── Gradient gökyüzü (procedural skybox) ──
-            const string skyPath = "Assets/Settings/SkyMat.mat";
-            var skyMat = AssetDatabase.LoadAssetAtPath<Material>(skyPath);
-            if (skyMat == null)
-            {
-                skyMat = new Material(Shader.Find("Skybox/Procedural"));
-                AssetDatabase.CreateAsset(skyMat, skyPath);
-            }
-            skyMat.SetColor("_SkyTint", new Color(0.55f, 0.78f, 0.98f));
-            skyMat.SetColor("_GroundColor", new Color(0.82f, 0.92f, 0.86f));
-            skyMat.SetFloat("_AtmosphereThickness", 0.9f);
-            skyMat.SetFloat("_Exposure", 1.35f);
-            EditorUtility.SetDirty(skyMat);
-            RenderSettings.skybox = skyMat;
-            cam.clearFlags = CameraClearFlags.Skybox;
+
+            // Skybox yerine kameranın SolidColor uzay rengi kullanılacak.
+            RenderSettings.skybox = null;
 
             // ── Işık: sıcak ana + serin dolgu + yumuşak pastel ortam ──
             var lightGo = new GameObject("Directional Light");
@@ -464,6 +454,7 @@ namespace BurakOyun.Editor
             SetField(gameMgr, "foodSpawner", foodSpawner);
             SetField(gameMgr, "ui", uiMgr);
             SetField(gameMgr, "config", config);
+            SetField(foodSpawner, "gameManager", gameMgr); // yem harf gösterimi (FindFirstObjectByType yerine)
 
             // Butonları bağla
             var startBtn = startPanel.GetComponentInChildren<Button>();
@@ -505,6 +496,9 @@ namespace BurakOyun.Editor
             var scaler = canvasGo.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920, 1080);
+            // Landscape: farklı tablet/telefon en-boy oranlarında UI dengeli ölçeklensin (B-03).
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
             canvasGo.AddComponent<GraphicRaycaster>();
 
             // EventSystem

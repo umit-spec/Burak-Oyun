@@ -37,7 +37,7 @@ namespace BurakOyun.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator YeBuyu_DuvaraCarp_TekrarOyna_TamDongu()
+        public IEnumerator YeBuyu_DuvaraCarp_Bagislayici_TekrarOyna()
         {
             var config = SmallConfig();
 
@@ -64,6 +64,7 @@ namespace BurakOyun.Tests.PlayMode
             var audio = gmGo.AddComponent<BurakOyun.Audio.AudioManager>();
             SetPrivate(audio, "gameManager", gm);
             SetPrivate(audio, "sfxSource", gmGo.AddComponent<AudioSource>());
+            gmGo.AddComponent<AudioListener>(); // "no audio listeners" uyarısını sustur
 
             snakeGo.SetActive(true);
             gmGo.SetActive(true);
@@ -92,15 +93,15 @@ namespace BurakOyun.Tests.PlayMode
             Assert.IsTrue(food.HasFood, "Yem yenince yenisi spawn edilmeli");
             Assert.IsFalse(snake.Body.ContainsPosition(food.Position), "Yeni yem yılanın üstüne gelmemeli");
 
-            // ── Duvara sür → oyun sonu ──
-            // Baş (4,3)'te sağa bakıyor; 7 genişlikte tahtada en geç 3-4 adımda duvar.
-            // Yolda rastgele yem çıkarsa yer ve büyür — ölüm yine de garantidir.
-            for (int i = 0; i < 10 && gameOverCount == 0; i++)
+            // ── Duvara sür → BAĞIŞLAYICI MOD: oyun bitmez ──
+            // 6 yaş için tasarım: duvara çarpınca "Oops" gösterilir, yılan geri bildirim
+            // sonrası kaldığı yerden devam eder; OnGameOver / GameOver durumu YOK.
+            for (int i = 0; i < 10; i++)
                 snake.Step();
 
-            Assert.AreEqual(1, gameOverCount, "Duvara çarpınca OnGameOver tam bir kez yayınlanmalı");
-            Assert.AreEqual(GameState.GameOver, gm.State.Current);
-            Assert.IsFalse(snake.IsMoving, "Oyun sonunda yılan durmalı");
+            Assert.AreEqual(0, gameOverCount, "Bağışlayıcı modda duvara çarpmak oyunu bitirmemeli");
+            Assert.AreEqual(GameState.Playing, gm.State.Current, "Bağışlayıcı modda durum Playing kalmalı");
+            Assert.IsTrue(snake.IsMoving, "Bağışlayıcı modda yılan geri bildirim sonrası devam etmeli");
 
             // ── Tekrar oyna → her şey sıfırlanır ──
             gm.Replay();
@@ -110,6 +111,66 @@ namespace BurakOyun.Tests.PlayMode
             Assert.AreEqual(new Vector2Int(3, 3), snake.Body.HeadPosition);
             Assert.IsTrue(snake.IsMoving);
             Assert.IsTrue(food.HasFood);
+
+            Object.Destroy(snakeGo);
+            Object.Destroy(foodGo);
+            Object.Destroy(gmGo);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator TahtaDolunca_OyunBiter_OnGameOver()
+        {
+            // Bağışlayıcı modda oyun yalnızca tahta TAMAMEN dolduğunda biter (EndGame yolu).
+            // 5×1 ızgara: yılan sağa yiye yiye tüm hücreleri doldurunca SpawnFood false → EndGame.
+            var config = ScriptableObject.CreateInstance<GameConfig>();
+            config.gridWidth = 5;
+            config.gridHeight = 1;
+            config.initialLength = 3;
+            config.tickRate = 0.05f;
+
+            var snakeGo = new GameObject("SnakeRig");
+            snakeGo.SetActive(false);
+            snakeGo.AddComponent<DirectionInput>();
+            var snake = snakeGo.AddComponent<SnakeController>();
+            SetPrivate(snake, "config", config);
+
+            var foodGo = new GameObject("FoodRig");
+            var food = foodGo.AddComponent<FoodSpawner>();
+            SetPrivate(food, "config", config);
+            SetPrivate(food, "snake", snake);
+            SetPrivate(snake, "foodSpawner", food);
+
+            var gmGo = new GameObject("GameManagerRig");
+            gmGo.SetActive(false);
+            var gm = gmGo.AddComponent<GameManager>();
+            SetPrivate(gm, "snake", snake);
+            SetPrivate(gm, "foodSpawner", food);
+
+            snakeGo.SetActive(true);
+            gmGo.SetActive(true);
+            yield return null;
+
+            int gameOver = 0;
+            gm.OnGameOver += (s, b) => gameOver++;
+
+            gm.StartGame();
+            // Tahta dolmadan kelime tamamlanmasın diye uzun kelime ver (EndGame yolunu izole et)
+            gm.currentWord = "AAAAAA";
+            gm.currentLetterIndex = 0;
+
+            // Baş (2,0), gövde sola (1,0)(0,0). Sağdaki yemi ye → tek boş hücreye (4,0) yem otomatik gelir.
+            food.Clear();
+            food.SpawnAt(new Vector2Int(3, 0));
+            snake.Step();
+            Assert.AreEqual(0, gameOver, "Tek boş hücre kaldı; tahta henüz dolmadı");
+            Assert.IsTrue(food.HasFood, "Kalan boş hücreye yeni yem spawn edilmeli");
+
+            // Son boş hücredeki yemi de ye → SpawnFood false → EndGame
+            snake.Step();
+            Assert.AreEqual(1, gameOver, "Tahta dolunca OnGameOver tam bir kez yayınlanmalı");
+            Assert.AreEqual(GameState.GameOver, gm.State.Current, "Tahta dolunca durum GameOver olmalı");
+            Assert.IsFalse(snake.IsMoving, "Oyun bitince yılan durmalı");
 
             Object.Destroy(snakeGo);
             Object.Destroy(foodGo);

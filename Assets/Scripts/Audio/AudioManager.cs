@@ -45,6 +45,7 @@ namespace BurakOyun.Audio
             gameManager.OnGameOver += HandleGameOver;
             gameManager.OnWordProgressChanged += HandleWordProgress;
             gameManager.OnWordCompleted += HandleWordCompleted;
+            gameManager.State.OnStateChanged += HandleStateChanged;
         }
 
         private void OnDisable()
@@ -53,6 +54,15 @@ namespace BurakOyun.Audio
             gameManager.OnGameOver -= HandleGameOver;
             gameManager.OnWordProgressChanged -= HandleWordProgress;
             gameManager.OnWordCompleted -= HandleWordCompleted;
+            gameManager.State.OnStateChanged -= HandleStateChanged;
+        }
+
+        private void HandleStateChanged(GameState state)
+        {
+            // Oyun duraklatılınca müzik de dursun, devam edince kaldığı yerden sürsün (B-01).
+            if (musicSource == null) return;
+            if (state == GameState.Paused) musicSource.Pause();
+            else if (state == GameState.Playing) musicSource.UnPause();
         }
 
         private void HandleScore(int score)

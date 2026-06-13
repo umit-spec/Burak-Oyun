@@ -16,7 +16,9 @@ namespace BurakOyun.Gameplay
         private const int MaxQueued = 2;
         private readonly Queue<Direction> queued = new();
 
-        [Tooltip("Kaydırmanın yön sayılması için gereken minimum parmak mesafesi (piksel). Küçük = daha hassas.")]
+        [Tooltip("Kaydırma eşiği — DPI'dan bağımsız, inç cinsinden. ~0.1-0.15 inç çocuk parmağı için iyi.")]
+        [SerializeField] private float swipeInches = 0.12f;
+        [Tooltip("Screen.dpi 0 dönerse (bazı cihazlar/editör) kullanılacak piksel yedeği.")]
         [SerializeField] private float minSwipePixels = 50f;
 
         private Vector2 swipeStart;
@@ -52,7 +54,10 @@ namespace BurakOyun.Gameplay
             {
                 swiping = false;
                 Vector2 delta = touch.position.ReadValue() - swipeStart;
-                if (TrySwipeToDirection(delta, minSwipePixels, out Direction dir)) Enqueue(dir);
+                // DPI-relative eşik: ucuz düşük-DPI tablette de yüksek-DPI telefonda da
+                // aynı fiziksel parmak mesafesi gerekir (B-06).
+                float threshold = Screen.dpi > 0f ? swipeInches * Screen.dpi : minSwipePixels;
+                if (TrySwipeToDirection(delta, threshold, out Direction dir)) Enqueue(dir);
             }
         }
 
