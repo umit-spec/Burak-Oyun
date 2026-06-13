@@ -16,6 +16,7 @@ namespace BurakOyun.Gameplay
         private int currentLane; // -1, 0, +1
         private float slowdownTimer;
         private bool isMoving;
+        private Vector3 spawnPosition;
 
         public bool IsMoving { get => isMoving; set => isMoving = value; }
         public float CurrentSpeed =>
@@ -24,6 +25,7 @@ namespace BurakOyun.Gameplay
         private void Awake()
         {
             input = GetComponent<LaneInput>();
+            spawnPosition = transform.position;
         }
 
         private void Update()
@@ -49,7 +51,7 @@ namespace BurakOyun.Gameplay
         {
             currentLane = 0;
             slowdownTimer = 0f;
-            transform.position = new Vector3(0f, transform.position.y, 0f);
+            transform.position = new Vector3(0f, spawnPosition.y, spawnPosition.z);
         }
     }
 }

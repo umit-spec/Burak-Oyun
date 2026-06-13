@@ -14,6 +14,7 @@ namespace BurakOyun.Gameplay
 
         private void Update()
         {
+            if (tiles == null || tiles.Length == 0) return;
             foreach (var tile in tiles)
             {
                 if (snake.position.z - tile.position.z > tileLength)

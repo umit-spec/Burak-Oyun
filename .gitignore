@@ -1,4 +1,4 @@
-# Unity
+# ── Unity üretilen çıktılar (commit edilmemeli) ───────────────────────────────
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
@@ -9,7 +9,14 @@
 MemoryCaptures/
 Recordings/
 
-# IDE
+# ── Önemli: aşağıdakiler commit EDİLMELİ ─────────────────────────────────────
+# ProjectSettings/   ← Unity proje ayarları (IL2CPP, ARM64, paket adı, sahne listesi)
+# Assets/Scenes/     ← sahne dosyaları
+# Assets/Settings/   ← URP Pipeline asset
+# Assets/TextMesh Pro/ ← TMP Essential Resources
+# **/*.meta          ← GUID tutarlılığı için zorunlu
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
 .vs/
 .vscode/
 *.csproj
@@ -22,22 +29,20 @@ Recordings/
 *.booproj
 *.unityproj
 
-# OS
+# ── OS ────────────────────────────────────────────────────────────────────────
 [Tt]humbs.db
 *.swp
 *~
 .DS_Store
 
-# Unity build
+# ── Derleme çıktıları (CI artifact olarak yüklenir, commit edilmez) ───────────
 *.apk
 *.aab
 *.unitypackage
 *.app
 
-# Test results
+# ── Test çıktıları ────────────────────────────────────────────────────────────
 *-results.xml
 *.log
 !Assets/**/*.log
 
-# Crashlytics
-crashlytics-build.properties

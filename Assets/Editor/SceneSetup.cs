@@ -66,6 +66,7 @@ namespace BurakOyun.Editor
             var boardMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
             boardMat.color = new Color(0.3f, 0.7f, 1f);
             board.GetComponent<Renderer>().sharedMaterial = boardMat;
+            board.AddComponent<Gameplay.LetterGlow>();
             AssetDatabase.CreateAsset(boardMat, "Assets/Prefabs/LetterBoardMat.mat");
 
             // Collider: board'un collider'ını trigger yap
@@ -225,6 +226,7 @@ namespace BurakOyun.Editor
             Object.DestroyImmediate(body.GetComponent<CapsuleCollider>());
             // Sevimli bob animasyonu görsel gövdede — kök hareketiyle (SnakeController) çakışmaz
             body.AddComponent<Gameplay.SnakeBob>();
+            body.AddComponent<Gameplay.SnakeTrail>();
 
             // Gözler
             for (int side = -1; side <= 1; side += 2)

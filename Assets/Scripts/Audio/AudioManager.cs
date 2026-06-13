@@ -24,6 +24,12 @@ namespace BurakOyun.Audio
             if (dingClip == null) dingClip = SfxGenerator.CreateDing();
             if (boingClip == null) boingClip = SfxGenerator.CreateBoing();
             if (applauseClip == null) applauseClip = SfxGenerator.CreateApplause();
+            if (musicSource != null && musicSource.clip == null) musicSource.clip = SfxGenerator.CreateBackgroundMusic();
+        }
+
+        private void Start()
+        {
+            if (musicSource != null && musicSource.clip != null) musicSource.Play();
         }
 
         private void OnEnable()

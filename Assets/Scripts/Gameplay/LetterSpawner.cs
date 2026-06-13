@@ -68,9 +68,9 @@ namespace BurakOyun.Gameplay
 
         private char PickDecoy(char target)
         {
-            string pool = config.decoyAlphabet;
+            string decoyPool = config.decoyAlphabet;
             char c;
-            do { c = pool[Random.Range(0, pool.Length)]; } while (c == target);
+            do { c = decoyPool[Random.Range(0, decoyPool.Length)]; } while (c == target);
             return c;
         }
 

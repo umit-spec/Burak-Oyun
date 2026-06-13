@@ -50,6 +50,38 @@ Bu menü şunları kontrol eder ve sonucu bir iletişim kutusunda gösterir:
 
 Tüm kontroller yeşilse **▶ Play basabilirsiniz.**
 
+### CI'nın PASS Alması İçin Git Commit Listesi
+
+Unity kurulumu bittikten sonra şu dosyaların repoda olması şart.  
+Aşağıdaki komutları **terminal**de proje kök klasöründe çalıştır:
+
+```bash
+# 1. Tüm Unity çıktılarını tek seferde ekle
+git add ProjectSettings/           # proje ayarları (IL2CPP, ARM64, sahne listesi...)
+git add Assets/Scenes/             # Game.unity + .meta
+git add Assets/Settings/           # URP-Pipeline.asset + .meta
+git add "Assets/TextMesh Pro/"     # TMP font asset'leri + .meta
+git add Assets/Scripts/            # mevcut .cs için üretilen .meta dosyaları
+git add Assets/Editor/             # editor scriptleri için .meta
+git add Assets/Tests/              # test scriptleri için .meta
+git add Packages/                  # manifest.json değiştiyse
+
+# 2. Commit
+git commit -m "Unity setup: ProjectSettings + assets + .meta dosyaları"
+
+# 3. Push → CI otomatik tetiklenir
+git push
+```
+
+**Ne commit edilmez:**
+
+| Klasör | Neden |
+|--------|-------|
+| `Library/` | Unity cache, her makinede yeniden üretilir |
+| `Temp/` | Build geçicileri |
+| `Builds/` | APK/AAB — CI artifact olarak yüklenir |
+| `UserSettings/` | Kişisel editör tercihleri |
+
 ---
 
 ## 0. Projeyi Aç
@@ -108,7 +140,155 @@ Canvas (Scale With Screen Size, 1920x1080) altında:
 - **Play** bas → OYNA → ok tuşları/A-D ile şerit değiştir, doğru harfleri sırayla topla.
 - **Window → General → Test Runner → EditMode → Run All** → 6 test yeşil olmalı (WordProgressTests).
 
-## 4. Sesler (5. gün)
+## 4. Android APK Build
+
+### Ön Koşullar (bir kez kurulur)
+- Unity Hub → Installs → Unity 6 LTS yanındaki dişli → **Add Modules** →  
+  **Android Build Support** + **Android SDK & NDK Tools** + **OpenJDK** seç, indir.
+
+### Oyun Kontrollerini Anla
+Android'de klavye yoktur. Oyun **dokunmatik** ile oynanır:
+
+| Hareket | Açıklama |
+|---------|---------|
+| Sol yarıya tap | Sol şeride geç |
+| Sağ yarıya tap | Sağ şeride geç |
+| Sola swipe | Sol şeride geç |
+| Sağa swipe | Sağ şeride geç |
+
+Klavye de hâlâ çalışır (PC'de test için).
+
+### Adım Adım
+
+```
+1. Menü: BurakOyun → Android — Player Ayarlarını Kur
+   (Paket adı, API seviyeleri, IL2CPP, ARM64, Landscape yönelim otomatik atanır.)
+
+2. File → Build Settings → Platform listesinden Android seç → Switch Platform
+   (Shaderları yeniden derler, 3-10 dk sürebilir.)
+
+3. Build Settings penceresinde:
+   - Scenes in Build: Assets/Scenes/Game.unity işaretli olmalı ✓
+   - Texture Compression: ASTC (modern Android için en iyi)
+
+4. Build → bir klasör seç → .apk dosyası oluşur.
+   (İlk build ~5 dk, sonraki buildler daha hızlı.)
+```
+
+### Cihaza Yükleme
+
+```
+# USB ile:
+adb install -r BurakOyun.apk
+
+# Dosya ile (eski yöntem):
+.apk'yı telefona kopyala → Ayarlar → Bilinmeyen Kaynaklara İzin Ver → aç
+```
+
+### Yayına Hazırlık (Google Play)
+- **Build Settings → Project Settings → Player → Keystore Manager** ile imzalama anahtarı oluştur.  
+  Anahtarı kaybetme — bir kez kurulur, güvenli saklanır.
+- `.aab` (Android App Bundle) formatında build al:  
+  Build Settings → **Build App Bundle (Google Play)** seçeneğini işaretle.
+- Google Play Console → Create App → Internal Testing'e yükle → test et → yayınla.
+
+### Hata Giderme — `[CXX1429]` IL2CPP CMake/NDK Build Hatası
+
+Hata mesajı:
+```
+[CXX1429] error when building with cmake ... CMakeLists.txt:
+C++ build system [prefab] failed while executing
+```
+
+**Neden olur:** Gradle'ın seçtiği NDK sürümü Unity 6 + IL2CPP + ARM64 ile uyumsuz.
+
+**Çözüm 1 — Önerilir (Unity Bundled NDK):**
+```
+Edit → Preferences → External Tools → Android
+→ "Android NDK installed with Unity (recommended)" seç
+→ Unity Editor'ü yeniden başlat
+```
+
+**Çözüm 2 — Otomatik Fix (Proje İçinde):**
+```
+BurakOyun → Android — CXX1429 Hata Giderme
+```
+Bu menü `gradleTemplate.properties`'i etkinleştirir:
+- `android.ndkVersion=25.1.8937393` (NDK r25c)
+- `android.prefabVersion=2.0.0`
+
+Ardından Publishing Settings'i aç:
+```
+Project Settings → Player → Android → Publishing Settings
+→ Custom Gradle Properties Template ✓
+```
+
+**Çözüm 3 — Eksik CMake:**
+```
+Android Studio → SDK Manager → SDK Tools sekmesi
+→ CMake 3.22.1 → Yükle
+```
+
+### Bilinen Sınırlama
+- Android geri tuşu şu an oyunu kapatabilir. Çocukların kazara kapatmaması için  
+  `GameManager.cs`'e `Application.Quit()` yerine sessiz geri tuşu engeli eklenebilir (ileriki sürüm).
+
+## 5. GitHub Actions CI (Otomatik Build Doğrulaması)
+
+Her `push` ve `pull_request`'te iki iş çalışır:
+
+```
+validate  → Python statik kontrol (Unity gerekmez)
+build     → Android APK build (validate geçerse, Unity lisansı gerekir)
+```
+
+### Kurulum (bir kez)
+
+**1. Unity Lisansını Secrets'a Ekle**
+
+```
+GitHub Repo → Settings → Secrets and variables → Actions → New repository secret
+```
+
+| Secret adı | Değer |
+|-----------|-------|
+| `UNITY_LICENSE` | game-ci aktivasyon çıktısı (XML) |
+| `UNITY_EMAIL` | Unity hesap e-postası |
+| `UNITY_PASSWORD` | Unity hesap şifresi |
+
+Lisans XML'ini almak için: [game.ci/docs/github/activation](https://game.ci/docs/github/activation)
+
+**2. Unity Sürümünü Güncelle**
+
+`ProjectSettings/ProjectVersion.txt` dosyasındaki sürüm bilgisi, yüklü Unity 6 sürümünüzle eşleşmeli.  
+Unity Hub → Installs'ta görüntülediğiniz sürümü (örn. `6000.0.23f1`) dosyaya yazın ve commit edin.
+
+**3. Kurulum Tamamlandıktan Sonra ProjectSettings'i Commit Et**
+
+```
+# Unity'de tüm kurulum adımlarını yaptıktan sonra:
+git add ProjectSettings/
+git commit -m "Add ProjectSettings after initial Unity setup"
+git push
+```
+
+### CI Çıktıları
+
+| Artifact | İçerik | Süre |
+|---------|---------|------|
+| `validation-report` | PASS/FAIL raporu (txt) | 7 gün |
+| `BurakOyun-APK-<sha>` | Debug APK | 14 gün |
+
+### Beklenen İlk Çalışma Sonucu
+
+```
+Static Validation: 5/11 PASS — 6 FAIL   ← ProjectSettings + sahne kurulmadı
+Android Build:     SKIP                  ← validate geçmeden çalışmaz
+```
+
+Unity kurulumu tamamlanıp `ProjectSettings/` commit edildikten sonra tüm kontroller yeşil olmalı.
+
+## 6. Sesler
 Telefonla kaydet veya ücretsiz kaynak kullan: `Bee!`, `U!`, `Re!`, `A!`, `Ke!` (veya harf adları), `BURAK!`, yumuşak "ding", komik "boing", alkış. `.wav` olarak `Assets/Audio`'ya at, WordData ve AudioManager'a bağla.
 
 ## Güvenlik Hatırlatması
