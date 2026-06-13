@@ -55,8 +55,32 @@ namespace BurakOyun.Editor
                     AssetDatabase.CreateAsset(wd, wpath);
                 }
             }
+
+            // Aile isimleri (ASCII dosya adı → Türkçe kelime)
+            var familyWords = new (string file, string word)[]
+            {
+                ("HALIME",  "HALİME"),
+                ("SEHER",   "SEHER"),
+                ("UMIT",    "ÜMİT"),
+                ("PERIHAN", "PERİHAN"),
+                ("MESUT",   "MESUT"),
+                ("ISA",     "İSA"),
+            };
+            foreach (var (file, word) in familyWords)
+            {
+                string wpath = $"Assets/Data/WordData_{file}.asset";
+                if (AssetDatabase.LoadAssetAtPath<ScriptableObject>(wpath) == null)
+                {
+                    var wd = ScriptableObject.CreateInstance<Data.WordData>();
+                    wd.word = word;
+                    wd.letters = new Data.LetterAudioEntry[word.Length];
+                    for (int i = 0; i < word.Length; i++)
+                        wd.letters[i] = new Data.LetterAudioEntry { letter = word[i].ToString() };
+                    AssetDatabase.CreateAsset(wd, wpath);
+                }
+            }
             AssetDatabase.SaveAssets();
-            Debug.Log("[BurakOyun] ✓ Tüm kelime assetleri hazır (BURAK + 9 kelime).");
+            Debug.Log("[BurakOyun] ✓ Tüm kelime assetleri hazır (BURAK + 9 kelime + 6 aile ismi = 16 kelime).");
         }
 
         [MenuItem("BurakOyun/2 — Letter Prefab Oluştur", priority = 2)]
@@ -309,7 +333,10 @@ namespace BurakOyun.Editor
             SetField(wordMgr, "wordData", wordData);
 
             // Kelime listesini yükle ve ata
-            var allWordNames = new[] { "BURAK","ANNE","BABA","KEDI","ELMA","OKUL","ARABA","BALIK","KALEM","KITAP" };
+            var allWordNames = new[] {
+                "BURAK","ANNE","BABA","KEDI","ELMA","OKUL","ARABA","BALIK","KALEM","KITAP",
+                "HALIME","SEHER","UMIT","PERIHAN","MESUT","ISA"
+            };
             var allWords = new System.Collections.Generic.List<Data.WordData>();
             foreach (var name in allWordNames)
             {
