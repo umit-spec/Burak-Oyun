@@ -62,30 +62,69 @@ namespace BurakOyun.Audio
             return clip;
         }
 
-        public static AudioClip CreateLetterSound(char letter, float duration = 0.5f)
+        /// Türkçe harf adını temsil eden prosedürel ses.
+        /// Sesli (A,E,I,İ,O,Ö,U,Ü): tek sürekli nota.
+        /// Sessiz: kısa nota + "e" sesi (be, ce, de … şeklinde).
+        public static AudioClip CreateLetterSound(char letter, float duration = 0.6f)
         {
-            if (s_letterCache.TryGetValue(letter, out AudioClip cached) && cached != null)
+            char upper = char.ToUpper(letter);
+            if (s_letterCache.TryGetValue(upper, out AudioClip cached) && cached != null)
                 return cached;
 
-            int sampleRate = 44100;
-            int samples = (int)(sampleRate * duration);
-            var clip = AudioClip.Create($"Letter_{letter}", samples, 1, sampleRate, false);
-            float[] data = new float[samples];
-            float baseFreq = 260f + (letter - 'A') * 15f;
-            for (int i = 0; i < samples; i++)
+            bool isVowel = "AEIİOÖUÜ".Contains(upper);
+            float freq1 = TurkishLetterFreq(upper);
+            float freq2 = 330f; // "e" sesi (sessiz harf soneki)
+
+            int sr = 44100;
+            float totalDur = isVowel ? 0.45f : 0.65f;
+            float part1 = isVowel ? totalDur : totalDur * 0.42f;
+            float part2 = isVowel ? 0f : totalDur - part1;
+
+            int totalSamples = (int)(sr * totalDur);
+            float[] data = new float[totalSamples];
+
+            int p1End = (int)(sr * part1);
+            for (int i = 0; i < p1End && i < totalSamples; i++)
             {
-                float t = (float)i / sampleRate;
-                float envelope = t < 0.05f
-                    ? t / 0.05f
-                    : Mathf.Max(0, 1f - (t - 0.05f) / (duration - 0.05f));
-                data[i] = (Mathf.Sin(2f * Mathf.PI * baseFreq * t) * 0.4f
-                         + Mathf.Sin(2f * Mathf.PI * baseFreq * 2f * t) * 0.2f)
-                         * envelope;
+                float t = (float)i / sr;
+                float env = i < (int)(sr * 0.02f) ? t / 0.02f
+                    : Mathf.Max(0f, 1f - (t - 0.02f) / (part1 - 0.02f));
+                data[i] = (Mathf.Sin(2f * Mathf.PI * freq1 * t) * 0.38f
+                         + Mathf.Sin(2f * Mathf.PI * freq1 * 2f * t) * 0.12f) * env;
             }
+
+            if (!isVowel && part2 > 0f)
+            {
+                int p2Len = (int)(sr * part2);
+                for (int i = 0; i < p2Len; i++)
+                {
+                    int idx = p1End + i;
+                    if (idx >= totalSamples) break;
+                    float t = (float)i / sr;
+                    float env = i < (int)(sr * 0.01f) ? t / 0.01f
+                        : Mathf.Max(0f, 1f - (t - 0.01f) / (part2 - 0.01f));
+                    data[idx] = (Mathf.Sin(2f * Mathf.PI * freq2 * t) * 0.38f
+                               + Mathf.Sin(2f * Mathf.PI * freq2 * 2f * t) * 0.12f) * env;
+                }
+            }
+
+            var clip = AudioClip.Create($"Letter_{upper}", totalSamples, 1, sr, false);
             clip.SetData(data, 0);
-            s_letterCache[letter] = clip;
+            s_letterCache[upper] = clip;
             return clip;
         }
+
+        private static float TurkishLetterFreq(char c) => c switch
+        {
+            'A' => 440f, 'E' => 330f, 'I' => 392f, 'İ' => 494f,
+            'O' => 523f, 'Ö' => 587f, 'U' => 349f, 'Ü' => 415f,
+            'B' => 247f, 'C' => 262f, 'Ç' => 277f, 'D' => 294f,
+            'F' => 311f, 'G' => 330f, 'Ğ' => 311f, 'H' => 370f,
+            'J' => 208f, 'K' => 220f, 'L' => 233f, 'M' => 196f,
+            'N' => 185f, 'P' => 175f, 'R' => 165f, 'S' => 156f,
+            'Ş' => 147f, 'T' => 139f, 'V' => 131f, 'Y' => 247f,
+            'Z' => 117f, _   => 262f,
+        };
 
         public static AudioClip CreateBackgroundMusic(float bpm = 100f)
         {

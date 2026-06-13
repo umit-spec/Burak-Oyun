@@ -9,6 +9,7 @@ namespace BurakOyun.Core
     public class GameManager : MonoBehaviour
     {
         [SerializeField] private SnakeController snake;
+        [SerializeField] private SnakeTail snakeTail;
         [SerializeField] private LetterSpawner spawner;
         [SerializeField] private WordManager wordManager;
         [SerializeField] private RewardManager rewardManager;
@@ -43,6 +44,7 @@ namespace BurakOyun.Core
             wordManager.ResetWord();
             snake.ResetToStart();
             snake.IsMoving = true;
+            if (snakeTail != null) snakeTail.ClearSegments();
             spawner.StartSpawning();
             ui.ShowStart(false);
             ui.ShowComplete(false);
@@ -76,7 +78,11 @@ namespace BurakOyun.Core
             ui.UpdateSoundButton(audioManager == null || !audioManager.IsMuted);
         }
 
-        private void HandleCorrect(char letter, int index) => snake.AddSpeedBoost();
+        private void HandleCorrect(char letter, int index)
+        {
+            snake.AddSpeedBoost();
+            if (snakeTail != null) snakeTail.AddSegment();
+        }
 
         private void HandleWrong(char letter) => snake.ApplySlowdown();
 

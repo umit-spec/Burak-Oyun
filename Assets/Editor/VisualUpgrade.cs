@@ -101,6 +101,9 @@ namespace BurakOyun.Editor
                     var col = part.GetComponent<SphereCollider>();
                     if (col != null) Object.DestroyImmediate(col);
                 }
+
+                // Her buluta bağımsız drift animasyonu ekle
+                cloud.AddComponent<CloudDrifter>();
             }
 
             EditorUtility.SetDirty(decorations);

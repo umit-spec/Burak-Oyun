@@ -13,6 +13,9 @@ namespace BurakOyun.Data
         [Tooltip("Hedef kelime, BÜYÜK harf. Örn: BURAK")]
         public string word = "BURAK";
 
+        [Tooltip("Kelime anlamı / emoji açıklama. Örn: 'elma 🍎'")]
+        public string meaning = "";
+
         [Tooltip("Kelime tamamlanınca çalınacak tam okuma sesi.")]
         public AudioClip wordAudio;
 

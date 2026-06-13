@@ -40,15 +40,108 @@ namespace BurakOyun.Editor
                 Debug.Log("[BurakOyun] WordData_BURAK oluşturuldu.");
             }
 
-            // Çoklu kelime assetleri
-            string[] extraWords = { "ANNE", "BABA", "KEDI", "ELMA", "OKUL", "ARABA", "BALIK", "KALEM", "KITAP" };
-            foreach (var w in extraWords)
+            // Temel kelimeler (dosya adı = kelime, anlam opsiyonel)
+            var basicWords = new (string word, string meaning)[]
+            {
+                ("ANNE",  "anne 👩"),
+                ("BABA",  "baba 👨"),
+                ("KEDI",  "kedi 🐱"),
+                ("ELMA",  "elma 🍎"),
+                ("OKUL",  "okul 🏫"),
+                ("ARABA", "araba 🚗"),
+                ("BALIK", "balık 🐟"),
+                ("KALEM", "kalem ✏"),
+                ("KITAP", "kitap 📚"),
+            };
+            foreach (var (w, m) in basicWords)
             {
                 string wpath = $"Assets/Data/WordData_{w}.asset";
                 if (AssetDatabase.LoadAssetAtPath<ScriptableObject>(wpath) == null)
                 {
                     var wd = ScriptableObject.CreateInstance<Data.WordData>();
                     wd.word = w;
+                    wd.meaning = m;
+                    wd.letters = new Data.LetterAudioEntry[w.Length];
+                    for (int i = 0; i < w.Length; i++)
+                        wd.letters[i] = new Data.LetterAudioEntry { letter = w[i].ToString() };
+                    AssetDatabase.CreateAsset(wd, wpath);
+                }
+            }
+
+            // Renkler kategorisi
+            var colorWords = new (string file, string word, string meaning)[]
+            {
+                ("KIRMIZI", "KIRMIZI", "kırmızı ❤"),
+                ("MAVI",    "MAVİ",    "mavi 💙"),
+                ("SARI",    "SARI",    "sarı ⭐"),
+                ("YESIL",   "YEŞİL",   "yeşil 🌿"),
+                ("MOR",     "MOR",     "mor 💜"),
+                ("TURUNCU", "TURUNCU", "turuncu 🍊"),
+                ("PEMBE",   "PEMBE",   "pembe 🌸"),
+                ("BEYAZ",   "BEYAZ",   "beyaz ⬜"),
+                ("SIYAH",   "SİYAH",   "siyah ⬛"),
+            };
+            foreach (var (file, w, m) in colorWords)
+            {
+                string wpath = $"Assets/Data/WordData_{file}.asset";
+                if (AssetDatabase.LoadAssetAtPath<ScriptableObject>(wpath) == null)
+                {
+                    var wd = ScriptableObject.CreateInstance<Data.WordData>();
+                    wd.word = w; wd.meaning = m;
+                    wd.letters = new Data.LetterAudioEntry[w.Length];
+                    for (int i = 0; i < w.Length; i++)
+                        wd.letters[i] = new Data.LetterAudioEntry { letter = w[i].ToString() };
+                    AssetDatabase.CreateAsset(wd, wpath);
+                }
+            }
+
+            // Sayılar kategorisi
+            var numberWords = new (string file, string word, string meaning)[]
+            {
+                ("BIR",   "BİR",   "bir 1"),
+                ("IKI",   "İKİ",   "iki 2"),
+                ("UC",    "ÜÇ",    "üç 3"),
+                ("DORT",  "DÖRT",  "dört 4"),
+                ("BES",   "BEŞ",   "beş 5"),
+                ("ALTI",  "ALTI",  "altı 6"),
+                ("YEDI",  "YEDİ",  "yedi 7"),
+                ("SEKIZ", "SEKİZ", "sekiz 8"),
+                ("DOKUZ", "DOKUZ", "dokuz 9"),
+                ("ON",    "ON",    "on 10"),
+            };
+            foreach (var (file, w, m) in numberWords)
+            {
+                string wpath = $"Assets/Data/WordData_{file}.asset";
+                if (AssetDatabase.LoadAssetAtPath<ScriptableObject>(wpath) == null)
+                {
+                    var wd = ScriptableObject.CreateInstance<Data.WordData>();
+                    wd.word = w; wd.meaning = m;
+                    wd.letters = new Data.LetterAudioEntry[w.Length];
+                    for (int i = 0; i < w.Length; i++)
+                        wd.letters[i] = new Data.LetterAudioEntry { letter = w[i].ToString() };
+                    AssetDatabase.CreateAsset(wd, wpath);
+                }
+            }
+
+            // Hayvanlar kategorisi (ekstra)
+            var animalWords = new (string file, string word, string meaning)[]
+            {
+                ("KOPEK",     "KÖPEK",     "köpek 🐕"),
+                ("AT",        "AT",        "at 🐴"),
+                ("KECI",      "KEÇİ",      "keçi 🐐"),
+                ("INEK",      "İNEK",      "inek 🐄"),
+                ("TAVUK",     "TAVUK",     "tavuk 🐔"),
+                ("KURBAGA",   "KURBAĞA",   "kurbağa 🐸"),
+                ("PENGUEN",   "PENGUEN",   "penguen 🐧"),
+                ("ASLAN",     "ASLAN",     "aslan 🦁"),
+            };
+            foreach (var (file, w, m) in animalWords)
+            {
+                string wpath = $"Assets/Data/WordData_{file}.asset";
+                if (AssetDatabase.LoadAssetAtPath<ScriptableObject>(wpath) == null)
+                {
+                    var wd = ScriptableObject.CreateInstance<Data.WordData>();
+                    wd.word = w; wd.meaning = m;
                     wd.letters = new Data.LetterAudioEntry[w.Length];
                     for (int i = 0; i < w.Length; i++)
                         wd.letters[i] = new Data.LetterAudioEntry { letter = w[i].ToString() };
@@ -88,7 +181,7 @@ namespace BurakOyun.Editor
                 }
             }
             AssetDatabase.SaveAssets();
-            Debug.Log("[BurakOyun] ✓ Tüm kelime assetleri hazır (BURAK + 9 kelime + 14 aile ismi = 24 kelime).");
+            Debug.Log("[BurakOyun] ✓ Tüm kelime assetleri hazır (BURAK + temel + renkler + sayılar + hayvanlar + isimler = 60+ kelime).");
         }
 
         [MenuItem("BurakOyun/2 — Letter Prefab Oluştur", priority = 2)]
@@ -321,6 +414,7 @@ namespace BurakOyun.Editor
             var laneInput = snakeGo.AddComponent<Gameplay.LaneInput>();
             var snakeCtrl = snakeGo.AddComponent<Gameplay.SnakeController>();
             SetField(snakeCtrl, "config", config);
+            var snakeTail = snakeGo.AddComponent<Gameplay.SnakeTail>();
 
             // ── Kamera ──
             var cam = Camera.main;
@@ -342,10 +436,17 @@ namespace BurakOyun.Editor
 
             // Kelime listesini yükle ve ata
             var allWordNames = new[] {
+                // Temel
                 "BURAK","ANNE","BABA","KEDI","ELMA","OKUL","ARABA","BALIK","KALEM","KITAP",
+                // İsimler
                 "HALIME","SEHER","UMIT","PERIHAN","MESUT","ISA",
-                "SALIH","NAZIR","DENIZ","YAGMUR",
-                "ZEYNEP","UFUK","SEVIM","BERKAN"
+                "SALIH","NAZIR","DENIZ","YAGMUR","ZEYNEP","UFUK","SEVIM","BERKAN",
+                // Renkler
+                "KIRMIZI","MAVI","SARI","YESIL","MOR","TURUNCU","PEMBE","BEYAZ","SIYAH",
+                // Sayılar
+                "BIR","IKI","UC","DORT","BES","ALTI","YEDI","SEKIZ","DOKUZ","ON",
+                // Hayvanlar
+                "KOPEK","AT","KECI","INEK","TAVUK","KURBAGA","PENGUEN","ASLAN",
             };
             var allWords = new System.Collections.Generic.List<Data.WordData>();
             foreach (var name in allWordNames)
@@ -451,7 +552,7 @@ namespace BurakOyun.Editor
             var canvas = CreateUICanvas(wordMgr, rewardMgr,
                 out var startPanel, out var completePanel,
                 out var progressTxt, out var starsTxt, out var feedbackTxt,
-                out var highScoreTxt, out var pausePanel,
+                out var highScoreTxt, out var meaningTxt, out var pausePanel,
                 out var pauseBtn, out var soundBtn, out var soundBtnLabel);
 
             // ── UIManager ──
@@ -462,6 +563,7 @@ namespace BurakOyun.Editor
             SetField(uiMgr, "starsText", starsTxt);
             SetField(uiMgr, "feedbackText", feedbackTxt);
             SetField(uiMgr, "highScoreText", highScoreTxt);
+            SetField(uiMgr, "meaningText", meaningTxt);
             SetField(uiMgr, "startPanel", startPanel);
             SetField(uiMgr, "completePanel", completePanel);
             SetField(uiMgr, "pausePanel", pausePanel);
@@ -473,6 +575,7 @@ namespace BurakOyun.Editor
             // ── GameManager ──
             var gameMgr = managers.AddComponent<Core.GameManager>();
             SetField(gameMgr, "snake", snakeCtrl);
+            SetField(gameMgr, "snakeTail", snakeTail);
             SetField(gameMgr, "spawner", spawner);
             SetField(gameMgr, "wordManager", wordMgr);
             SetField(gameMgr, "rewardManager", rewardMgr);
@@ -527,7 +630,8 @@ namespace BurakOyun.Editor
             Core.RewardManager rewardMgr,
             out GameObject startPanel, out GameObject completePanel,
             out TMP_Text progressTxt, out TMP_Text starsTxt, out TMP_Text feedbackTxt,
-            out TMP_Text highScoreTxt, out GameObject pausePanel,
+            out TMP_Text highScoreTxt, out TMP_Text meaningTxt,
+            out GameObject pausePanel,
             out Button pauseBtn, out Button soundBtn, out TMP_Text soundBtnLabel)
         {
             // Canvas
@@ -602,10 +706,15 @@ namespace BurakOyun.Editor
                 new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero,
                 new Vector2(800f, 150f));
             highScoreTxt = CreateTMPText(completePanel.transform, "HighScoreText",
-                "En İyi: ★ 0", 52, TextAlignmentOptions.Center,
-                new Vector2(0.5f, 0.55f), new Vector2(0.5f, 0.55f), Vector2.zero,
-                new Vector2(600f, 80f));
+                "En İyi: ★ 0", 48, TextAlignmentOptions.Center,
+                new Vector2(0.5f, 0.57f), new Vector2(0.5f, 0.57f), Vector2.zero,
+                new Vector2(600f, 70f));
             highScoreTxt.color = new Color(1f, 0.85f, 0.1f);
+            meaningTxt = CreateTMPText(completePanel.transform, "MeaningText",
+                "", 54, TextAlignmentOptions.Center,
+                new Vector2(0.5f, 0.47f), new Vector2(0.5f, 0.47f), Vector2.zero,
+                new Vector2(700f, 80f));
+            meaningTxt.color = new Color(0.9f, 0.9f, 1f);
             CreateButton(completePanel.transform, "BtnReplay", "TEKRAR OYNA",
                 new Vector2(0.5f, 0.35f), new Vector2(400f, 120f),
                 new Color(0.3f, 0.6f, 1f));

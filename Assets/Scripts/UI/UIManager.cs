@@ -25,6 +25,7 @@ namespace BurakOyun.UI
         [SerializeField] private GameObject startPanel;
         [SerializeField] private GameObject completePanel;
         [SerializeField] private GameObject pausePanel;
+        [SerializeField] private TMP_Text meaningText;   // "ELMA = 🍎"
 
         [Header("Canvas")]
         [SerializeField] private Canvas mainCanvas; // floating text parent
@@ -111,6 +112,11 @@ namespace BurakOyun.UI
         private void HandleComplete()
         {
             ShowFeedback("HARİKA!");
+            if (meaningText != null)
+            {
+                string m = wordManager.WordData != null ? wordManager.WordData.meaning : "";
+                meaningText.text = string.IsNullOrEmpty(m) ? "" : $"{wordManager.Word} = {m}";
+            }
             ShowComplete(true);
         }
 
