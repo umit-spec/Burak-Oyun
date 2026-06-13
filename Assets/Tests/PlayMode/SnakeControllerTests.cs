@@ -74,9 +74,9 @@ namespace BurakOyun.Tests.PlayMode
             yield return null;
         }
 
-        // ── Test 3: ResetToStart → pozisyon (0, y, 0)'a döner ───────────────
+        // ── Test 3: ResetToStart → spawn pozisyonuna döner (X=0, Z=spawnZ) ──
         [UnityTest]
-        public IEnumerator ResetToStart_ResetsPosition()
+        public IEnumerator ResetToStart_ResetsToSpawnPosition()
         {
             var go = new GameObject("SnakeReset");
             go.SetActive(false);
@@ -85,15 +85,19 @@ namespace BurakOyun.Tests.PlayMode
             var snake = go.AddComponent<SnakeController>();
             SetPrivate(snake, "config", MakeConfig());
 
-            go.transform.position = new Vector3(5f, 1f, 30f);
+            // Spawn pozisyonunu kur; SetActive Awake'i tetikler ve spawnPosition'ı yakalar
+            go.transform.position = new Vector3(0f, 1f, 5f);
             go.SetActive(true);
             yield return null;
+
+            // Yılanın ilerleyişini simüle et
+            go.transform.position = new Vector3(2.5f, 1f, 42f);
 
             snake.ResetToStart();
 
             var pos = go.transform.position;
             Assert.AreEqual(0f, pos.x, 0.001f, "ResetToStart sonrası X = 0 olmalı");
-            Assert.AreEqual(0f, pos.z, 0.001f, "ResetToStart sonrası Z = 0 olmalı");
+            Assert.AreEqual(5f, pos.z, 0.001f, "ResetToStart başlangıç Z'sine dönmeli");
             Assert.AreEqual(1f, pos.y, 0.001f, "ResetToStart Y pozisyonunu korumalı");
 
             Object.Destroy(go);
