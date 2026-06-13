@@ -644,12 +644,21 @@ namespace BurakOyun.Editor
             scaler.referenceResolution = new Vector2(1920, 1080);
             canvasGo.AddComponent<GraphicRaycaster>();
 
-            // EventSystem
-            if (Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+            // EventSystem — Android'de StandaloneInputModule çalışmaz, InputSystemUIInputModule zorunlu
+            var existingES = Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>();
+            if (existingES == null)
             {
                 var es = new GameObject("EventSystem");
                 es.AddComponent<UnityEngine.EventSystems.EventSystem>();
                 es.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+            }
+            else
+            {
+                // Eski StandaloneInputModule varsa kaldır, yeni modülü ekle
+                var old = existingES.GetComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+                if (old != null) Object.DestroyImmediate(old);
+                if (existingES.GetComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>() == null)
+                    existingES.gameObject.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
             }
 
             // Progress text (üst orta)

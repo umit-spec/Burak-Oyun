@@ -39,6 +39,11 @@ namespace BurakOyun.Core
 
         public void StartGame()
         {
+            if (wordManager == null || snake == null || spawner == null || ui == null)
+            {
+                Debug.LogError("[GameManager] StartGame: kritik referans eksik — Sahneyi Kur menüsünü yeniden çalıştırın.");
+                return;
+            }
             Current = State.Playing;
             Time.timeScale = 1f;
             wordManager.ResetWord();
