@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using BurakOyun.Gameplay;
 using BurakOyun.UI;
 
@@ -58,5 +59,32 @@ namespace BurakOyun.Core
         }
 
         private void StopSnake() => snake.IsMoving = false;
+
+        private void Update()
+        {
+            HandleBackButton();
+        }
+
+        private void HandleBackButton()
+        {
+            var kb = Keyboard.current;
+            if (kb == null || !kb.escapeKey.wasPressedThisFrame) return;
+
+            switch (Current)
+            {
+                case State.Playing:
+                case State.WordComplete:
+                    CancelInvoke(nameof(StopSnake));
+                    Current = State.Menu;
+                    snake.IsMoving = false;
+                    spawner.StopAndClear();
+                    ui.ShowStart(true);
+                    ui.ShowComplete(false);
+                    break;
+                case State.Menu:
+                    Application.Quit();
+                    break;
+            }
+        }
     }
 }
