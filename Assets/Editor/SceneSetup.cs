@@ -448,8 +448,11 @@ namespace BurakOyun.Editor
                 Debug.Log("[BurakOyun] Harici ses bulunamadı — prosedürel ses kullanılacak.");
 
             // ── UI Canvas ──
-            var canvas = CreateUICanvas(wordMgr, rewardMgr, out var startPanel, out var completePanel,
-                out var progressTxt, out var starsTxt, out var feedbackTxt);
+            var canvas = CreateUICanvas(wordMgr, rewardMgr,
+                out var startPanel, out var completePanel,
+                out var progressTxt, out var starsTxt, out var feedbackTxt,
+                out var highScoreTxt, out var pausePanel,
+                out var pauseBtn, out var soundBtn, out var soundBtnLabel);
 
             // ── UIManager ──
             var uiMgr = canvas.gameObject.AddComponent<UI.UIManager>();
@@ -458,8 +461,14 @@ namespace BurakOyun.Editor
             SetField(uiMgr, "progressText", progressTxt);
             SetField(uiMgr, "starsText", starsTxt);
             SetField(uiMgr, "feedbackText", feedbackTxt);
+            SetField(uiMgr, "highScoreText", highScoreTxt);
             SetField(uiMgr, "startPanel", startPanel);
             SetField(uiMgr, "completePanel", completePanel);
+            SetField(uiMgr, "pausePanel", pausePanel);
+            SetField(uiMgr, "pauseButton", pauseBtn);
+            SetField(uiMgr, "soundButton", soundBtn);
+            SetField(uiMgr, "soundButtonLabel", soundBtnLabel);
+            SetField(uiMgr, "mainCanvas", canvas.GetComponent<Canvas>());
 
             // ── GameManager ──
             var gameMgr = managers.AddComponent<Core.GameManager>();
@@ -468,20 +477,23 @@ namespace BurakOyun.Editor
             SetField(gameMgr, "wordManager", wordMgr);
             SetField(gameMgr, "rewardManager", rewardMgr);
             SetField(gameMgr, "ui", uiMgr);
+            SetField(gameMgr, "audioManager", managers.GetComponent<Audio.AudioManager>());
+            SetField(gameMgr, "cameraFollow", camFollow);
 
             // Butonları bağla
-            var startBtn = startPanel.GetComponentInChildren<Button>();
+            var startBtn2 = startPanel.GetComponentInChildren<Button>();
             var replayBtn = completePanel.GetComponentInChildren<Button>();
-            if (startBtn != null)
-            {
-                UnityEditor.Events.UnityEventTools.AddPersistentListener(
-                    startBtn.onClick, gameMgr.StartGame);
-            }
+            var resumeBtn = pausePanel.GetComponentInChildren<Button>();
+            if (startBtn2 != null)
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(startBtn2.onClick, gameMgr.StartGame);
             if (replayBtn != null)
-            {
-                UnityEditor.Events.UnityEventTools.AddPersistentListener(
-                    replayBtn.onClick, gameMgr.Replay);
-            }
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(replayBtn.onClick, gameMgr.Replay);
+            if (resumeBtn != null)
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(resumeBtn.onClick, gameMgr.TogglePause);
+            if (pauseBtn != null)
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(pauseBtn.onClick, gameMgr.TogglePause);
+            if (soundBtn != null)
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(soundBtn.onClick, gameMgr.ToggleSound);
 
             // ── Işık ──
             if (Object.FindFirstObjectByType<Light>() == null)
@@ -514,7 +526,9 @@ namespace BurakOyun.Editor
         static GameObject CreateUICanvas(Gameplay.WordManager wordMgr,
             Core.RewardManager rewardMgr,
             out GameObject startPanel, out GameObject completePanel,
-            out TMP_Text progressTxt, out TMP_Text starsTxt, out TMP_Text feedbackTxt)
+            out TMP_Text progressTxt, out TMP_Text starsTxt, out TMP_Text feedbackTxt,
+            out TMP_Text highScoreTxt, out GameObject pausePanel,
+            out Button pauseBtn, out Button soundBtn, out TMP_Text soundBtnLabel)
         {
             // Canvas
             var canvasGo = new GameObject("UI Canvas");
@@ -554,9 +568,24 @@ namespace BurakOyun.Editor
                 new Vector2(600f, 100f));
             feedbackTxt.color = new Color(1f, 0.5f, 0.1f);
 
+            // ── Duraklat butonu (sağ üst) ──
+            pauseBtn = CreateButton(canvasGo.transform, "BtnPause", "❚❚",
+                new Vector2(1f, 1f), new Vector2(90f, 90f), new Color(0.2f, 0.2f, 0.2f, 0.7f));
+            var pauseRt = pauseBtn.GetComponent<RectTransform>();
+            pauseRt.anchorMin = pauseRt.anchorMax = new Vector2(1f, 1f);
+            pauseRt.anchoredPosition = new Vector2(-55f, -55f);
+
+            // ── Ses butonu (sağ üstte, duraklat'ın solunda) ──
+            soundBtn = CreateButton(canvasGo.transform, "BtnSound", "♪",
+                new Vector2(1f, 1f), new Vector2(90f, 90f), new Color(0.2f, 0.2f, 0.2f, 0.7f));
+            var soundRt = soundBtn.GetComponent<RectTransform>();
+            soundRt.anchorMin = soundRt.anchorMax = new Vector2(1f, 1f);
+            soundRt.anchoredPosition = new Vector2(-155f, -55f);
+            soundBtnLabel = soundBtn.GetComponentInChildren<TMP_Text>();
+
             // ── Start Panel ──
             startPanel = CreatePanel(canvasGo.transform, "StartPanel",
-                new Color(0f, 0f, 0f, 0.5f));
+                new Color(0f, 0f, 0f, 0.55f));
             CreateTMPText(startPanel.transform, "Title", "BURAK\nHarf Oyunu", 80,
                 TextAlignmentOptions.Center,
                 new Vector2(0.5f, 0.65f), new Vector2(0.5f, 0.65f), Vector2.zero,
@@ -567,15 +596,32 @@ namespace BurakOyun.Editor
 
             // ── Complete Panel ──
             completePanel = CreatePanel(canvasGo.transform, "CompletePanel",
-                new Color(0f, 0f, 0f, 0.5f));
-            CreateTMPText(completePanel.transform, "CompleteTitle", "HARİKA!\nBURAK", 80,
+                new Color(0f, 0f, 0f, 0.55f));
+            CreateTMPText(completePanel.transform, "CompleteTitle", "HARİKA!", 80,
                 TextAlignmentOptions.Center,
-                new Vector2(0.5f, 0.65f), new Vector2(0.5f, 0.65f), Vector2.zero,
-                new Vector2(800f, 250f));
+                new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero,
+                new Vector2(800f, 150f));
+            highScoreTxt = CreateTMPText(completePanel.transform, "HighScoreText",
+                "En İyi: ★ 0", 52, TextAlignmentOptions.Center,
+                new Vector2(0.5f, 0.55f), new Vector2(0.5f, 0.55f), Vector2.zero,
+                new Vector2(600f, 80f));
+            highScoreTxt.color = new Color(1f, 0.85f, 0.1f);
             CreateButton(completePanel.transform, "BtnReplay", "TEKRAR OYNA",
                 new Vector2(0.5f, 0.35f), new Vector2(400f, 120f),
                 new Color(0.3f, 0.6f, 1f));
             completePanel.SetActive(false);
+
+            // ── Pause Panel ──
+            pausePanel = CreatePanel(canvasGo.transform, "PausePanel",
+                new Color(0f, 0f, 0f, 0.65f));
+            CreateTMPText(pausePanel.transform, "PauseTitle", "DURAKLADI", 80,
+                TextAlignmentOptions.Center,
+                new Vector2(0.5f, 0.6f), new Vector2(0.5f, 0.6f), Vector2.zero,
+                new Vector2(700f, 150f));
+            CreateButton(pausePanel.transform, "BtnResume", "DEVAM ET",
+                new Vector2(0.5f, 0.38f), new Vector2(380f, 120f),
+                new Color(0.2f, 0.75f, 0.3f));
+            pausePanel.SetActive(false);
 
             return canvasGo;
         }
