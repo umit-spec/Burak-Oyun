@@ -1,9 +1,10 @@
 # ──────────────────────────────────────────────────────────────────────────────
 # BurakOyun — Android Build & Validation
 #
-# İki iş:
-#   1. validate  — Python ile statik kontrol (Unity gerektirmez, her push'ta çalışır)
-#   2. build     — game-ci/unity-builder ile Android APK (sadece validate geçince)
+# Üç iş:
+#   1. validate  — Python statik kontrol (Unity gerekmez, her push'ta çalışır)
+#   2. test      — Unity EditMode + PlayMode testleri (validate geçince)
+#   3. build     — Android APK (test geçince)
 #
 # Gerekli GitHub Secrets (repo → Settings → Secrets → Actions):
 #   UNITY_LICENSE  : Unity Personal lisans XML (game-ci/unity-activate çıktısı)
@@ -29,7 +30,7 @@ concurrency:
 # ── JOB 1: Statik Doğrulama ─────────────────────────────────────────────────
 jobs:
   validate:
-    name: "Static Validation"
+    name: "1 · Static Validation"
     runs-on: ubuntu-latest
     outputs:
       passed: ${{ steps.run.outputs.passed }}
@@ -53,12 +54,8 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-          if [ $EXIT -eq 0 ]; then
-            echo "passed=true"  >> "$GITHUB_OUTPUT"
-          else
-            echo "passed=false" >> "$GITHUB_OUTPUT"
-          fi
-
+          [ $EXIT -eq 0 ] && echo "passed=true" >> "$GITHUB_OUTPUT" \
+                          || echo "passed=false" >> "$GITHUB_OUTPUT"
           exit $EXIT
 
       - name: Upload validation report
@@ -69,29 +66,96 @@ jobs:
           path: validation-report.txt
           retention-days: 7
 
-# ── JOB 2: Android APK Build ────────────────────────────────────────────────
-  build:
-    name: "Android APK Build"
+# ── JOB 2: Unity Testleri ───────────────────────────────────────────────────
+  test:
+    name: "2 · Unity Tests"
     runs-on: ubuntu-latest
     needs: validate
     if: needs.validate.result == 'success'
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Cache Unity Library (tests)
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-Tests-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-Tests-
+            Library-
+
+      # ── EditMode testleri (WordProgress, SaveManager — saf C#) ──
+      - name: Run EditMode tests
+        id: editmode
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE:  ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL:    ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: auto
+          testMode: editmode
+          artifactsPath: test-results/editmode
+
+      # ── PlayMode testleri (CoreLoop, LetterSpawner smoke) ──
+      - name: Run PlayMode tests
+        id: playmode
+        uses: game-ci/unity-test-runner@v4
+        if: always()
+        env:
+          UNITY_LICENSE:  ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL:    ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: auto
+          testMode: playmode
+          artifactsPath: test-results/playmode
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ github.sha }}
+          path: test-results/
+          retention-days: 14
+
+      - name: Test summary
+        if: always()
+        run: |
+          EM="${{ steps.editmode.outcome }}"
+          PM="${{ steps.playmode.outcome }}"
+          {
+            echo "## Unity Test Sonuçları"
+            echo ""
+            echo "| Test Modu | Sonuç |"
+            echo "|-----------|-------|"
+            echo "| EditMode (WordProgress, SaveManager) | $([ "$EM" = "success" ] && echo "PASS ✅" || echo "FAIL ❌") |"
+            echo "| PlayMode (CoreLoop, LetterSpawner)   | $([ "$PM" = "success" ] && echo "PASS ✅" || echo "FAIL ❌") |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+# ── JOB 3: Android APK Build ────────────────────────────────────────────────
+  build:
+    name: "3 · Android APK Build"
+    runs-on: ubuntu-latest
+    needs: [validate, test]
+    if: needs.validate.result == 'success' && needs.test.result == 'success'
+
+    steps:
+      - uses: actions/checkout@v4
         with:
           lfs: false
 
-      # Unity Library klasörünü önbelleğe al (build süresi ~%60 azalır)
-      - name: Cache Unity Library
+      - name: Cache Unity Library (build)
         uses: actions/cache@v4
         with:
           path: Library
           key: Library-Android-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: |
             Library-Android-
+            Library-Tests-
             Library-
 
-      # ── Android APK Build (game-ci/unity-builder) ──
       - name: Build Android APK
         id: unity_build
         uses: game-ci/unity-builder@v4
@@ -100,21 +164,17 @@ jobs:
           UNITY_EMAIL:    ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
-          # unityVersion: auto → ProjectSettings/ProjectVersion.txt'i okur
           unityVersion: auto
           targetPlatform: Android
           buildName: BurakOyun
-          # .apk çıktısı (Play'e göndermek için sonradan .aab'e geç)
           androidExportType: androidPackage
           androidTargetSdkVersion: AndroidApiLevelAuto
-          # İmzasız debug build — CI doğrulaması için yeterli
           androidKeystoreName: ""
           androidKeystoreBase64: ""
           androidKeystorePass: ""
           androidKeyaliasName: ""
           androidKeyaliasPass: ""
 
-      # ── APK Artifact ──
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         if: steps.unity_build.outcome == 'success'
@@ -123,38 +183,34 @@ jobs:
           path: build/Android/BurakOyun.apk
           retention-days: 14
 
-      # ── Build Raporu ──
       - name: Build report
         if: always()
         run: |
           BUILD="${{ steps.unity_build.outcome }}"
-
           {
             echo "## Android Build Raporu"
             echo ""
             echo "| Alan | Değer |"
             echo "|------|-------|"
-            echo "| Unity | auto (ProjectSettings/ProjectVersion.txt) |"
+            echo "| Unity | auto (ProjectVersion.txt) |"
             echo "| Platform | Android · IL2CPP · ARM64 |"
+            echo "| NDK | r25c — gradleTemplate.properties ile sabitlendi |"
             echo "| Commit | \`${{ github.sha }}\` |"
             echo "| Ref | \`${{ github.ref }}\` |"
-
             if [ "$BUILD" = "success" ]; then
               APK="build/Android/BurakOyun.apk"
-              if [ -f "$APK" ]; then
-                SIZE=$(du -sh "$APK" | cut -f1)
-                echo "| APK boyutu | $SIZE |"
-              fi
+              [ -f "$APK" ] && echo "| APK boyutu | $(du -sh "$APK" | cut -f1) |"
               echo ""
               echo "✅ **Build başarılı.**"
               echo ""
               echo "**Artifact:** \`BurakOyun-APK-${{ github.sha }}\`"
-              echo "> Actions → bu workflow çalışması → Artifacts bölümünden indirin."
+              echo "> Actions → bu çalışma → Artifacts"
             else
               echo ""
-              echo "❌ **Build başarısız.** Build logunu inceleyin:"
-              echo "- game-ci lisans kurulumu: https://game.ci/docs/github/activation"
-              echo "- \`UNITY_LICENSE\` / \`UNITY_EMAIL\` / \`UNITY_PASSWORD\` secrets doğru mu?"
-              echo "- \`ProjectSettings/ProjectVersion.txt\` Unity sürümünüzle eşleşiyor mu?"
+              echo "❌ **Build başarısız.**"
+              echo "- Secrets: \`UNITY_LICENSE\` / \`UNITY_EMAIL\` / \`UNITY_PASSWORD\`"
+              echo "- NDK: Edit → Preferences → Android NDK → 'Installed with Unity'"
+              echo "- CMake: Android SDK Manager → SDK Tools → CMake 3.22.1"
+              echo "- Lisans: https://game.ci/docs/github/activation"
             fi
           } >> "$GITHUB_STEP_SUMMARY"

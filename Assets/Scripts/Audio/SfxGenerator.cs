@@ -1,9 +1,94 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BurakOyun.Audio
 {
     public static class SfxGenerator
     {
+        // Her harf için AudioClip bir kez üretilip cache'de tutulur.
+        // Unity domain reload'da static alan sıfırlanır, sahne geçişinde sorun olmaz.
+        private static readonly Dictionary<char, AudioClip> s_letterCache = new();
+
+        public static AudioClip CreateDing(float duration = 0.3f, float freq = 880f)
+        {
+            int sampleRate = 44100;
+            int samples = (int)(sampleRate * duration);
+            var clip = AudioClip.Create("Ding", samples, 1, sampleRate, false);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float envelope = 1f - (float)i / samples;
+                data[i] = Mathf.Sin(2f * Mathf.PI * freq * t) * envelope * 0.5f;
+            }
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        public static AudioClip CreateBoing(float duration = 0.4f)
+        {
+            int sampleRate = 44100;
+            int samples = (int)(sampleRate * duration);
+            var clip = AudioClip.Create("Boing", samples, 1, sampleRate, false);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float envelope = 1f - (float)i / samples;
+                float freq = 300f + 200f * Mathf.Sin(t * 25f);
+                data[i] = Mathf.Sin(2f * Mathf.PI * freq * t) * envelope * 0.4f;
+            }
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        public static AudioClip CreateApplause(float duration = 1.5f)
+        {
+            int sampleRate = 44100;
+            int samples = (int)(sampleRate * duration);
+            var clip = AudioClip.Create("Applause", samples, 1, sampleRate, false);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float envelope = t < 0.2f ? t / 0.2f : 1f - (t - 0.2f) / (duration - 0.2f);
+                float chime = Mathf.Sin(2f * Mathf.PI * 523f * t) * 0.2f
+                            + Mathf.Sin(2f * Mathf.PI * 659f * t) * 0.15f
+                            + Mathf.Sin(2f * Mathf.PI * 784f * t) * 0.15f;
+                float noise = (Random.value * 2f - 1f) * 0.12f;
+                data[i] = (chime + noise) * envelope;
+            }
+            clip.SetData(data, 0);
+            return clip;
+        }
+
+        public static AudioClip CreateLetterSound(char letter, float duration = 0.5f)
+        {
+            if (s_letterCache.TryGetValue(letter, out AudioClip cached) && cached != null)
+                return cached;
+
+            int sampleRate = 44100;
+            int samples = (int)(sampleRate * duration);
+            var clip = AudioClip.Create($"Letter_{letter}", samples, 1, sampleRate, false);
+            float[] data = new float[samples];
+            float baseFreq = 260f + (letter - 'A') * 15f;
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sampleRate;
+                float envelope = t < 0.05f
+                    ? t / 0.05f
+                    : Mathf.Max(0, 1f - (t - 0.05f) / (duration - 0.05f));
+                data[i] = (Mathf.Sin(2f * Mathf.PI * baseFreq * t) * 0.4f
+                         + Mathf.Sin(2f * Mathf.PI * baseFreq * 2f * t) * 0.2f)
+                         * envelope;
+            }
+            clip.SetData(data, 0);
+            s_letterCache[letter] = clip;
+            return clip;
+        }
+    }
+}
+
         public static AudioClip CreateDing(float duration = 0.3f, float freq = 880f)
         {
             int sampleRate = 44100;

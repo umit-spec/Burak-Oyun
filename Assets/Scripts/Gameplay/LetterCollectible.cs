@@ -27,7 +27,7 @@ namespace BurakOyun.Gameplay
 
         private void OnTriggerEnter(Collider other)
         {
-            if (collected || !other.CompareTag("Player")) return;
+            if (collected || owner == null || !other.CompareTag("Player")) return;
             collected = true;
             owner.NotifyCollected(this);
         }
