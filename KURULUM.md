@@ -192,6 +192,43 @@ adb install -r BurakOyun.apk
   Build Settings → **Build App Bundle (Google Play)** seçeneğini işaretle.
 - Google Play Console → Create App → Internal Testing'e yükle → test et → yayınla.
 
+### Hata Giderme — `[CXX1429]` IL2CPP CMake/NDK Build Hatası
+
+Hata mesajı:
+```
+[CXX1429] error when building with cmake ... CMakeLists.txt:
+C++ build system [prefab] failed while executing
+```
+
+**Neden olur:** Gradle'ın seçtiği NDK sürümü Unity 6 + IL2CPP + ARM64 ile uyumsuz.
+
+**Çözüm 1 — Önerilir (Unity Bundled NDK):**
+```
+Edit → Preferences → External Tools → Android
+→ "Android NDK installed with Unity (recommended)" seç
+→ Unity Editor'ü yeniden başlat
+```
+
+**Çözüm 2 — Otomatik Fix (Proje İçinde):**
+```
+BurakOyun → Android — CXX1429 Hata Giderme
+```
+Bu menü `gradleTemplate.properties`'i etkinleştirir:
+- `android.ndkVersion=25.1.8937393` (NDK r25c)
+- `android.prefabVersion=2.0.0`
+
+Ardından Publishing Settings'i aç:
+```
+Project Settings → Player → Android → Publishing Settings
+→ Custom Gradle Properties Template ✓
+```
+
+**Çözüm 3 — Eksik CMake:**
+```
+Android Studio → SDK Manager → SDK Tools sekmesi
+→ CMake 3.22.1 → Yükle
+```
+
 ### Bilinen Sınırlama
 - Android geri tuşu şu an oyunu kapatabilir. Çocukların kazara kapatmaması için  
   `GameManager.cs`'e `Application.Quit()` yerine sessiz geri tuşu engeli eklenebilir (ileriki sürüm).

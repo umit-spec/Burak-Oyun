@@ -138,6 +138,26 @@ def main() -> int:
         "Unity'de: Window → TextMeshPro → Import TMP Essential Resources",
         "git add 'Assets/TextMesh Pro/' && git commit -m 'Import TMP Essential Resources'")
 
+    # ── 4b. Android IL2CPP — CXX1429 fix ─────────────────────────────
+    print()
+    print("[ 4b / Android IL2CPP — CXX1429 Fix ]")
+
+    gradle_props = read("Assets/Plugins/Android/gradleTemplate.properties")
+    chk("gradleTemplate.properties commit edilmiş",
+        exists("Assets/Plugins/Android/gradleTemplate.properties"),
+        "Unity'de: BurakOyun → Android — Player Ayarlarını Kur (otomatik oluşturur)",
+        "git add Assets/Plugins/ && git commit -m 'Add Android gradle template (CXX1429 fix)'")
+
+    chk("gradleTemplate: android.ndkVersion=25.1.8937393 (NDK r25c)",
+        "25.1.8937393" in gradle_props,
+        "Assets/Plugins/Android/gradleTemplate.properties dosyasını kontrol et",
+        "git add Assets/Plugins/Android/gradleTemplate.properties && git commit -m 'Pin NDK version'")
+
+    chk("gradleTemplate: android.prefabVersion=2.0.0",
+        "prefabVersion=2.0.0" in gradle_props,
+        "Assets/Plugins/Android/gradleTemplate.properties → android.prefabVersion=2.0.0 ekle",
+        "git add Assets/Plugins/Android/gradleTemplate.properties && git commit -m 'Pin prefab version'")
+
     chk("manifest.json: com.unity.textmeshpro",
         "textmeshpro" in read("Packages/manifest.json"),
         "Packages/manifest.json dosyasını kontrol et",
