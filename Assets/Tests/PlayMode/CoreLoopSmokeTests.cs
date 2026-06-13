@@ -10,8 +10,10 @@ using BurakOyun.Data;
 namespace BurakOyun.Tests.PlayMode
 {
     /// <summary>
-    /// Core loop event akışı smoke testi: spawn mantığı olmadan, WordManager + RewardManager'ı
-    /// kodla kurup doğru/yanlış/tamamlanma + yıldız akışını uçtan uca doğrular.
+    /// Çekirdek oyun döngüsü smoke testi: SnakeController + FoodSpawner + GameManager'ı
+    /// kodla kurup ye→büyü→skor ve duvar→oyun sonu→tekrar oyna akışını uçtan uca doğrular.
+    /// Görsel prefab'lar bağlanmaz (salt-mantık modu); tick yerine Step() doğrudan çağrılır
+    /// — test zamana bağımlı değildir.
     /// (Private SerializeField alanları reflection ile bağlanır; GameObject inactive kurulup
     ///  SetActive(true) ile Awake/OnEnable doğru referanslarla tetiklenir.)
     /// </summary>
@@ -24,86 +26,313 @@ namespace BurakOyun.Tests.PlayMode
             f.SetValue(target, value);
         }
 
-        [UnityTest]
-        public IEnumerator BURAK_DogruSirada_Tamamlanir_Ve_YildizKazandirir()
+        static GameConfig SmallConfig()
         {
-            var go = new GameObject("TestRig");
-            go.SetActive(false); // alanları bağlamadan Awake/OnEnable tetiklenmesin
+            var config = ScriptableObject.CreateInstance<GameConfig>();
+            config.gridWidth = 7;
+            config.gridHeight = 7;
+            config.initialLength = 3;
+            config.tickRate = 0.05f;
+            return config;
+        }
 
-            var word = ScriptableObject.CreateInstance<WordData>();
-            word.word = "BURAK";
+        [UnityTest]
+        public IEnumerator YeBuyu_DuvaraCarp_Bagislayici_TekrarOyna()
+        {
+            var config = SmallConfig();
 
-            var wm = go.AddComponent<WordManager>();
-            SetPrivate(wm, "wordData", word);
+            // ── Rig kurulumu ──
+            var snakeGo = new GameObject("SnakeRig");
+            snakeGo.SetActive(false);
+            snakeGo.AddComponent<DirectionInput>();
+            var snake = snakeGo.AddComponent<SnakeController>();
+            SetPrivate(snake, "config", config);
 
-            var reward = go.AddComponent<RewardManager>();
-            SetPrivate(reward, "wordManager", wm);
-            SetPrivate(reward, "snake", go.transform); // sparkle pozisyonu için (null-guard'lı)
+            var foodGo = new GameObject("FoodRig");
+            var food = foodGo.AddComponent<FoodSpawner>();
+            SetPrivate(food, "config", config);
+            SetPrivate(food, "snake", snake);
+            SetPrivate(snake, "foodSpawner", food);
 
-            int correct = 0, wrong = 0, complete = 0;
-            wm.OnCorrectLetter += (c, i) => correct++;
-            wm.OnWrongLetter += c => wrong++;
-            wm.OnWordComplete += () => complete++;
+            var gmGo = new GameObject("GameManagerRig");
+            gmGo.SetActive(false);
+            var gm = gmGo.AddComponent<GameManager>();
+            SetPrivate(gm, "snake", snake);
+            SetPrivate(gm, "foodSpawner", food);
 
-            go.SetActive(true); // Awake + OnEnable: referanslar bağlı
+            // Ses zinciri de event'lere abone olup patlamamalı (klipler programatik üretilir)
+            var audio = gmGo.AddComponent<BurakOyun.Audio.AudioManager>();
+            SetPrivate(audio, "gameManager", gm);
+            SetPrivate(audio, "sfxSource", gmGo.AddComponent<AudioSource>());
+            gmGo.AddComponent<AudioListener>(); // "no audio listeners" uyarısını sustur
+
+            snakeGo.SetActive(true);
+            gmGo.SetActive(true);
             yield return null;
 
-            wm.ResetWord();
+            int gameOverCount = 0;
+            int lastScore = -1;
+            gm.OnScoreChanged += s => lastScore = s;
+            gm.OnGameOver += (s, best) => gameOverCount++;
 
-            // Yanlış harf → index sabit, yanlış event, tamamlanmadı
-            wm.Submit('Z');
-            Assert.AreEqual(1, wrong, "Yanlış harf event'i yayınlanmalı");
-            Assert.AreEqual(0, wm.CurrentIndex, "Yanlış harf index'i değiştirmemeli (geri sarma yok)");
-            Assert.IsFalse(wm.IsComplete);
+            // ── Başlat ──
+            gm.StartGame();
+            Assert.AreEqual(GameState.Playing, gm.State.Current);
+            Assert.IsTrue(snake.IsMoving);
+            Assert.AreEqual(3, snake.Body.Length);
+            Assert.AreEqual(new Vector2Int(3, 3), snake.Body.HeadPosition, "Yılan tahta ortasında başlamalı");
+            Assert.IsTrue(food.HasFood, "Başlangıçta yem spawn edilmeli");
 
-            // BURAK sırayla → tamamlanır
-            foreach (char c in "BURAK") wm.Submit(c);
+            // ── Ye → büyü → skor ──
+            food.Clear();
+            food.SpawnAt(new Vector2Int(4, 3)); // tam önüne koy (sağa bakıyor)
+            snake.Step();
+            Assert.AreEqual(4, snake.Body.Length, "Yem yiyince yılan büyümeli");
+            Assert.AreEqual(1, gm.Score, "Yem yiyince skor artmalı");
+            Assert.AreEqual(1, lastScore, "OnScoreChanged yayınlanmalı");
+            Assert.IsTrue(food.HasFood, "Yem yenince yenisi spawn edilmeli");
+            Assert.IsFalse(snake.Body.ContainsPosition(food.Position), "Yeni yem yılanın üstüne gelmemeli");
 
-            Assert.IsTrue(wm.IsComplete, "Kelime tamamlanmalı");
-            Assert.AreEqual(1, complete, "OnWordComplete tam olarak bir kez yayınlanmalı");
-            Assert.AreEqual(5, correct, "5 doğru harf event'i yayınlanmalı");
-            Assert.AreEqual(5, reward.Stars, "Her doğru harf +1 yıldız");
+            // ── Duvara sür → BAĞIŞLAYICI MOD: oyun bitmez ──
+            // 6 yaş için tasarım: duvara çarpınca "Oops" gösterilir, yılan geri bildirim
+            // sonrası kaldığı yerden devam eder; OnGameOver / GameOver durumu YOK.
+            for (int i = 0; i < 10; i++)
+                snake.Step();
 
-            // Reset → sıfırlanır
-            wm.ResetWord();
-            Assert.AreEqual(0, wm.CurrentIndex, "Reset index'i sıfırlamalı");
-            Assert.AreEqual(0, reward.Stars, "Reset yıldızları sıfırlamalı");
+            Assert.AreEqual(0, gameOverCount, "Bağışlayıcı modda duvara çarpmak oyunu bitirmemeli");
+            Assert.AreEqual(GameState.Playing, gm.State.Current, "Bağışlayıcı modda durum Playing kalmalı");
+            Assert.IsTrue(snake.IsMoving, "Bağışlayıcı modda yılan geri bildirim sonrası devam etmeli");
 
-            Object.Destroy(go);
+            // ── Tekrar oyna → her şey sıfırlanır ──
+            gm.Replay();
+            Assert.AreEqual(GameState.Playing, gm.State.Current);
+            Assert.AreEqual(0, gm.Score, "Tekrar oynayınca skor sıfırlanmalı");
+            Assert.AreEqual(3, snake.Body.Length, "Tekrar oynayınca uzunluk sıfırlanmalı");
+            Assert.AreEqual(new Vector2Int(3, 3), snake.Body.HeadPosition);
+            Assert.IsTrue(snake.IsMoving);
+            Assert.IsTrue(food.HasFood);
+
+            Object.Destroy(snakeGo);
+            Object.Destroy(foodGo);
+            Object.Destroy(gmGo);
             yield return null;
         }
 
         [UnityTest]
-        public IEnumerator AudioManager_KlipsizBaslar_HataVermez()
+        public IEnumerator TahtaDolunca_OyunBiter_OnGameOver()
         {
-            // AudioManager Awake'te SfxGenerator ile klip üretmeli, null referansla patlamamalı
-            var go = new GameObject("AudioRig");
-            go.SetActive(false);
+            // Bağışlayıcı modda oyun yalnızca tahta TAMAMEN dolduğunda biter (EndGame yolu).
+            // 5×1 ızgara: yılan sağa yiye yiye tüm hücreleri doldurunca SpawnFood false → EndGame.
+            var config = ScriptableObject.CreateInstance<GameConfig>();
+            config.gridWidth = 5;
+            config.gridHeight = 1;
+            config.initialLength = 3;
+            config.tickRate = 0.05f;
 
-            var word = ScriptableObject.CreateInstance<WordData>();
-            word.word = "BURAK";
+            var snakeGo = new GameObject("SnakeRig");
+            snakeGo.SetActive(false);
+            snakeGo.AddComponent<DirectionInput>();
+            var snake = snakeGo.AddComponent<SnakeController>();
+            SetPrivate(snake, "config", config);
 
-            var wm = go.AddComponent<WordManager>();
-            SetPrivate(wm, "wordData", word);
+            var foodGo = new GameObject("FoodRig");
+            var food = foodGo.AddComponent<FoodSpawner>();
+            SetPrivate(food, "config", config);
+            SetPrivate(food, "snake", snake);
+            SetPrivate(snake, "foodSpawner", food);
 
-            var audio = go.AddComponent<BurakOyun.Audio.AudioManager>();
-            SetPrivate(audio, "wordManager", wm);
-            var src = go.AddComponent<AudioSource>();
-            SetPrivate(audio, "sfxSource", src);
-            SetPrivate(audio, "voiceSource", src);
+            var gmGo = new GameObject("GameManagerRig");
+            gmGo.SetActive(false);
+            var gm = gmGo.AddComponent<GameManager>();
+            SetPrivate(gm, "snake", snake);
+            SetPrivate(gm, "foodSpawner", food);
 
-            go.SetActive(true);
+            snakeGo.SetActive(true);
+            gmGo.SetActive(true);
             yield return null;
 
-            // Olaylar tetiklendiğinde exception olmamalı (klipler programatik üretiliyor)
+            int gameOver = 0;
+            gm.OnGameOver += (s, b) => gameOver++;
+
+            gm.StartGame();
+            // Tahta dolmadan kelime tamamlanmasın diye uzun kelime ver (EndGame yolunu izole et)
+            gm.currentWord = "AAAAAA";
+            gm.currentLetterIndex = 0;
+
+            // Baş (2,0), gövde sola (1,0)(0,0). Sağdaki yemi ye → tek boş hücreye (4,0) yem otomatik gelir.
+            food.Clear();
+            food.SpawnAt(new Vector2Int(3, 0));
+            snake.Step();
+            Assert.AreEqual(0, gameOver, "Tek boş hücre kaldı; tahta henüz dolmadı");
+            Assert.IsTrue(food.HasFood, "Kalan boş hücreye yeni yem spawn edilmeli");
+
+            // Son boş hücredeki yemi de ye → SpawnFood false → EndGame
+            snake.Step();
+            Assert.AreEqual(1, gameOver, "Tahta dolunca OnGameOver tam bir kez yayınlanmalı");
+            Assert.AreEqual(GameState.GameOver, gm.State.Current, "Tahta dolunca durum GameOver olmalı");
+            Assert.IsFalse(snake.IsMoving, "Oyun bitince yılan durmalı");
+
+            Object.Destroy(snakeGo);
+            Object.Destroy(foodGo);
+            Object.Destroy(gmGo);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator KendineCarpma_OyunuBitirir()
+        {
+            var config = SmallConfig();
+            // Not: 4 segmentlik yılan U-dönüşünde kuyruğunu kovalar ve "kuyruk hücresi güvenli"
+            // kuralıyla ÖLMEZ. Kendine çarpma için daha uzun yılan gerekir.
+            config.gridWidth = 11;
+            config.gridHeight = 11;
+            config.initialLength = 6;
+
+            var snakeGo = new GameObject("SnakeRig");
+            snakeGo.SetActive(false);
+            var input = snakeGo.AddComponent<DirectionInput>();
+            var snake = snakeGo.AddComponent<SnakeController>();
+            SetPrivate(snake, "config", config);
+
+            snakeGo.SetActive(true);
+            yield return null;
+
+            int died = 0;
+            snake.OnDied += () => died++;
+            snake.IsMoving = true;
+
+            // Baş (5,5), gövde sola: (4,5)(3,5)(2,5)(1,5)(0,5) — 6 segment.
+            // U-dönüşü: yukarı (5,6), sola (4,6), aşağı → hedef (4,5) = gövde (kuyruk değil) → ölmeli.
+            input.Enqueue(Direction.Up);
+            snake.Step(); // baş (5,6)
+            input.Enqueue(Direction.Left);
+            snake.Step(); // baş (4,6)
+            input.Enqueue(Direction.Down);
+            snake.Step(); // hedef (4,5) → gövdeye çarpar
+
+            Assert.AreEqual(1, died, "Kendine çarpınca OnDied yayınlanmalı");
+            Assert.IsFalse(snake.IsMoving);
+
+            Object.Destroy(snakeGo);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator Duraklat_YilaniDurdurur_DevamKaldiginiSurdurur()
+        {
+            var config = SmallConfig();
+
+            var snakeGo = new GameObject("SnakeRig");
+            snakeGo.SetActive(false);
+            snakeGo.AddComponent<DirectionInput>();
+            var snake = snakeGo.AddComponent<SnakeController>();
+            SetPrivate(snake, "config", config);
+
+            var foodGo = new GameObject("FoodRig");
+            var food = foodGo.AddComponent<FoodSpawner>();
+            SetPrivate(food, "config", config);
+            SetPrivate(food, "snake", snake);
+            SetPrivate(snake, "foodSpawner", food);
+
+            var gmGo = new GameObject("GameManagerRig");
+            gmGo.SetActive(false);
+            var gm = gmGo.AddComponent<GameManager>();
+            SetPrivate(gm, "snake", snake);
+            SetPrivate(gm, "foodSpawner", food);
+
+            snakeGo.SetActive(true);
+            gmGo.SetActive(true);
+            yield return null;
+
+            gm.StartGame();
+            Assert.AreEqual(GameState.Playing, gm.State.Current);
+            var headBefore = snake.Body.HeadPosition;
+
+            // Duraklat: yilan durur, durum Paused, bas kimildamaz
+            gm.Pause();
+            Assert.IsTrue(gm.IsPaused);
+            Assert.AreEqual(GameState.Paused, gm.State.Current);
+            Assert.IsFalse(snake.IsMoving, "Pause yilani durdurmali");
+            Assert.AreEqual(headBefore, snake.Body.HeadPosition, "Pause sirasinda bas kimildamamali");
+
+            // Devam: hareket surer, durum Playing, kaldigi yerden ilerler
+            gm.Resume();
+            Assert.IsFalse(gm.IsPaused);
+            Assert.AreEqual(GameState.Playing, gm.State.Current);
+            Assert.IsTrue(snake.IsMoving, "Resume hareketi surdurmeli");
+
+            snake.Step();
+            Assert.AreEqual(new Vector2Int(headBefore.x + 1, headBefore.y), snake.Body.HeadPosition,
+                "Resume kaldigi yerden devam etmeli (saga 1 hucre)");
+
+            Object.Destroy(snakeGo);
+            Object.Destroy(foodGo);
+            Object.Destroy(gmGo);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator OlumGeriBildirimi_VeMuzik_AkisiBozmaz()
+        {
+            var config = SmallConfig();
+
+            var snakeGo = new GameObject("SnakeRig");
+            snakeGo.SetActive(false);
+            snakeGo.AddComponent<DirectionInput>();
+            var snake = snakeGo.AddComponent<SnakeController>();
+            SetPrivate(snake, "config", config);
+
+            var foodGo = new GameObject("FoodRig");
+            var food = foodGo.AddComponent<FoodSpawner>();
+            SetPrivate(food, "config", config);
+            SetPrivate(food, "snake", snake);
+            SetPrivate(snake, "foodSpawner", food);
+
+            var gmGo = new GameObject("GameManagerRig");
+            gmGo.SetActive(false);
+            var gm = gmGo.AddComponent<GameManager>();
+            SetPrivate(gm, "snake", snake);
+            SetPrivate(gm, "foodSpawner", food);
+
+            // Ödül: ölümde baş feedback'ini tetikler (salt-mantık modunda no-op; akış test edilir)
+            var reward = gmGo.AddComponent<RewardManager>();
+            SetPrivate(reward, "gameManager", gm);
+            SetPrivate(reward, "snake", snake);
+
+            // Ses: müzik kaynağı + sfx
+            var audio = gmGo.AddComponent<BurakOyun.Audio.AudioManager>();
+            SetPrivate(audio, "gameManager", gm);
+            SetPrivate(audio, "sfxSource", gmGo.AddComponent<AudioSource>());
+            var musicSrc = gmGo.AddComponent<AudioSource>();
+            SetPrivate(audio, "musicSource", musicSrc);
+
+            snakeGo.SetActive(true);
+            gmGo.SetActive(true);
+            yield return null; // Awake + Start
+
+            // Müzik: klip atanmış, loop, çok düşük sesli
+            Assert.IsNotNull(musicSrc.clip, "Müzik klibi atanmalı");
+            Assert.IsTrue(musicSrc.loop, "Müzik loop olmalı");
+            Assert.LessOrEqual(musicSrc.volume, 0.2f, "Müzik çok düşük sesli olmalı");
+
+            int gameOver = 0;
+            gm.OnGameOver += (s, b) => gameOver++;
+
+            // Harf heceleme akış testi (GameManager -> Harf ilerlemesi)
             Assert.DoesNotThrow(() =>
             {
-                wm.ResetWord();
-                wm.Submit('B');
-                wm.Submit('Z');
+                gm.StartGame();
+                // Harf yeme adımını tetikleyelim (yılanın önüne yem koyup adım atarak)
+                food.SpawnAt(snake.Body.HeadPosition + Vector2Int.right);
+                snake.Step();
             });
+            
+            // Harf ilerlemesinin arttığını doğrula
+            Assert.AreEqual(1, gm.currentLetterIndex, "Harf yendiğinde heceleme ilerlemeli");
 
-            Object.Destroy(go);
+            Object.Destroy(snakeGo);
+            Object.Destroy(foodGo);
+            Object.Destroy(gmGo);
             yield return null;
         }
     }

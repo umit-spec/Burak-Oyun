@@ -4,21 +4,21 @@ namespace BurakOyun.Core
 {
     /// <summary>
     /// SADECE lokal kayıt (PlayerPrefs). Hiçbir veri cihaz dışına çıkmaz.
-    /// MVP: yalnızca en iyi yıldız sayısı.
+    /// MVP: yalnızca en iyi skor.
     /// </summary>
     public static class SaveManager
     {
-        private const string BestStarsKey = "BestStars";
+        private const string BestScoreKey = "BestScore";
 
-        public static int BestStars => PlayerPrefs.GetInt(BestStarsKey, 0);
+        public static int BestScore => PlayerPrefs.GetInt(BestScoreKey, 0);
 
-        public static void ReportStars(int stars)
+        /// <summary>Skoru bildirir; yeni rekorsa kaydeder ve true döner.</summary>
+        public static bool ReportScore(int score)
         {
-            if (stars > BestStars)
-            {
-                PlayerPrefs.SetInt(BestStarsKey, stars);
-                PlayerPrefs.Save();
-            }
+            if (score <= BestScore) return false;
+            PlayerPrefs.SetInt(BestScoreKey, score);
+            PlayerPrefs.Save();
+            return true;
         }
     }
 }
