@@ -23,6 +23,8 @@ namespace BurakOyun.Gameplay
             owner = spawner;
             collected = false;
             if (label != null) label.text = letter.ToString();
+            var glow = GetComponentInChildren<LetterGlow>(true);
+            if (glow != null) glow.SetColor(LetterGlow.LetterColor(letter));
         }
 
         private void OnTriggerEnter(Collider other)
