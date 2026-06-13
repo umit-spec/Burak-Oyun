@@ -3,8 +3,7 @@
     "rootNamespace": "BurakOyun.Tests.PlayMode",
     "references": [
         "BurakOyun.Runtime",
-        "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner"
+        "UnityEngine.TestRunner"
     ],
     "includePlatforms": [],
     "precompiledReferences": [

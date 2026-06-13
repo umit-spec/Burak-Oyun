@@ -11,6 +11,7 @@ namespace BurakOyun.Editor
         {
             AddSnakeTrail();
             AddDecorations();
+            AddTreeDecorations();
             EnhanceParticles();
 
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
@@ -100,9 +101,67 @@ namespace BurakOyun.Editor
                     var col = part.GetComponent<SphereCollider>();
                     if (col != null) Object.DestroyImmediate(col);
                 }
+
+                // Her buluta bağımsız drift animasyonu ekle
+                cloud.AddComponent<CloudDrifter>();
             }
 
             EditorUtility.SetDirty(decorations);
+        }
+
+        private static void AddTreeDecorations()
+        {
+            // Mevcut Decorations parent'ı bul veya kullan
+            var parent = GameObject.Find("Decorations");
+            if (parent == null) parent = new GameObject("Decorations");
+
+            // Kenney GLB modelleri yükle (Unity import sonrası çalışır)
+            string[] modelPaths =
+            {
+                "Assets/Models/Kenney/Nature/tree_pineSmallA.glb",
+                "Assets/Models/Kenney/Nature/tree_pineSmallB.glb",
+                "Assets/Models/Kenney/Nature/tree_pineSmallC.glb",
+                "Assets/Models/Kenney/Nature/tree_simple.glb",
+                "Assets/Models/Kenney/Nature/plant_bushLarge.glb",
+                "Assets/Models/Kenney/Platformer/tree-pine-small.glb",
+                "Assets/Models/Kenney/Platformer/flowers-tall.glb",
+                "Assets/Models/Kenney/Platformer/flowers.glb",
+            };
+
+            var loaded = new System.Collections.Generic.List<GameObject>();
+            foreach (var p in modelPaths)
+            {
+                var m = AssetDatabase.LoadAssetAtPath<GameObject>(p);
+                if (m != null) loaded.Add(m);
+            }
+
+            if (loaded.Count == 0)
+            {
+                Debug.LogWarning("[VisualUpgrade] Kenney 3D modelleri henüz import edilmemiş. " +
+                                 "Unity projesini yeniden açın, modeller import edildikten sonra bu menüyü tekrar çalıştırın.");
+                return;
+            }
+
+            // Her 10m'de bir yol kenarına ağaç/çiçek yerleştir
+            float[] zPos = { 5f, 15f, 25f, 35f, 45f, 55f, 65f, 75f };
+            float[] sides = { -7f, 7f };
+            int idx = 0;
+            foreach (float z in zPos)
+            {
+                foreach (float x in sides)
+                {
+                    var prefab = loaded[idx % loaded.Count];
+                    var inst = (GameObject)Object.Instantiate(prefab, parent.transform);
+                    inst.name = prefab.name;
+                    inst.transform.position = new Vector3(x, 0f, z);
+                    inst.transform.localScale = Vector3.one * 2.5f;
+                    inst.transform.rotation = Quaternion.Euler(0f, (idx % 4) * 90f, 0f);
+                    idx++;
+                }
+            }
+
+            Debug.Log($"[VisualUpgrade] ✓ {idx} ağaç/bitki eklendi ({loaded.Count} Kenney modeli).");
+            EditorUtility.SetDirty(parent);
         }
 
         private static void EnhanceParticles()

@@ -18,16 +18,18 @@ namespace BurakOyun.Core
 
         private void OnEnable()
         {
+            if (wordManager == null) { Debug.LogError("[RewardManager] wordManager atanmamış!"); return; }
             wordManager.OnCorrectLetter += HandleCorrect;
-            wordManager.OnWordComplete += HandleComplete;
-            wordManager.OnWordReset += HandleReset;
+            wordManager.OnWordComplete  += HandleComplete;
+            wordManager.OnWordReset     += HandleReset;
         }
 
         private void OnDisable()
         {
+            if (wordManager == null) return;
             wordManager.OnCorrectLetter -= HandleCorrect;
-            wordManager.OnWordComplete -= HandleComplete;
-            wordManager.OnWordReset -= HandleReset;
+            wordManager.OnWordComplete  -= HandleComplete;
+            wordManager.OnWordReset     -= HandleReset;
         }
 
         private void HandleCorrect(char letter, int index)

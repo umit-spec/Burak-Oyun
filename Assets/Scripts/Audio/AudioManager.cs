@@ -3,10 +3,6 @@ using BurakOyun.Gameplay;
 
 namespace BurakOyun.Audio
 {
-    /// <summary>
-    /// Tüm sesler lokal AudioClip. Yumuşak SFX — korkutucu ses yasak.
-    /// Harf sesleri WordData'dan gelir (char → clip).
-    /// </summary>
     public class AudioManager : MonoBehaviour
     {
         [SerializeField] private WordManager wordManager;
@@ -14,36 +10,67 @@ namespace BurakOyun.Audio
         [SerializeField] private AudioSource voiceSource;
         [SerializeField] private AudioSource musicSource;
 
-        [Header("SFX (yumuşak!)")]
-        [SerializeField] private AudioClip dingClip;     // doğru harf
-        [SerializeField] private AudioClip boingClip;    // yanlış harf (komik, korkutucu değil)
-        [SerializeField] private AudioClip applauseClip; // kelime tamam
+        [Header("SFX")]
+        [SerializeField] private AudioClip dingClip;
+        [SerializeField] private AudioClip boingClip;
+        [SerializeField] private AudioClip applauseClip;
+
+        private bool sfxMuted;
+        private bool musicMuted;
 
         private void Awake()
         {
-            if (dingClip == null) dingClip = SfxGenerator.CreateDing();
-            if (boingClip == null) boingClip = SfxGenerator.CreateBoing();
+            if (dingClip == null)     dingClip     = SfxGenerator.CreateDing();
+            if (boingClip == null)    boingClip    = SfxGenerator.CreateBoing();
             if (applauseClip == null) applauseClip = SfxGenerator.CreateApplause();
-            if (musicSource != null && musicSource.clip == null) musicSource.clip = SfxGenerator.CreateBackgroundMusic();
+            if (musicSource != null && musicSource.clip == null)
+                musicSource.clip = SfxGenerator.CreateBackgroundMusic();
+
+            // Kayıtlı tercihlerle başla
+            sfxMuted   = PlayerPrefs.GetInt("SfxMuted",   0) == 1;
+            musicMuted = PlayerPrefs.GetInt("MusicMuted", 0) == 1;
+            ApplyMuteState();
         }
 
         private void Start()
         {
-            if (musicSource != null && musicSource.clip != null) musicSource.Play();
+            if (musicSource != null && musicSource.clip != null && !musicMuted)
+                musicSource.Play();
         }
 
         private void OnEnable()
         {
+            if (wordManager == null) { Debug.LogError("[AudioManager] wordManager atanmamış!"); return; }
             wordManager.OnCorrectLetter += HandleCorrect;
-            wordManager.OnWrongLetter += HandleWrong;
-            wordManager.OnWordComplete += HandleComplete;
+            wordManager.OnWrongLetter   += HandleWrong;
+            wordManager.OnWordComplete  += HandleComplete;
         }
 
         private void OnDisable()
         {
+            if (wordManager == null) return;
             wordManager.OnCorrectLetter -= HandleCorrect;
-            wordManager.OnWrongLetter -= HandleWrong;
-            wordManager.OnWordComplete -= HandleComplete;
+            wordManager.OnWrongLetter   -= HandleWrong;
+            wordManager.OnWordComplete  -= HandleComplete;
+        }
+
+        public void ToggleSound()
+        {
+            sfxMuted = !sfxMuted;
+            musicMuted = sfxMuted;
+            ApplyMuteState();
+            PlayerPrefs.SetInt("SfxMuted",   sfxMuted   ? 1 : 0);
+            PlayerPrefs.SetInt("MusicMuted", musicMuted ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+
+        public bool IsMuted => sfxMuted;
+
+        private void ApplyMuteState()
+        {
+            if (sfxSource   != null) sfxSource.mute   = sfxMuted;
+            if (voiceSource != null) voiceSource.mute  = sfxMuted;
+            if (musicSource != null) musicSource.mute  = musicMuted;
         }
 
         private void HandleCorrect(char letter, int index)

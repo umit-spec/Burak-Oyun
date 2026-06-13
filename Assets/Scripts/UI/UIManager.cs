@@ -1,49 +1,61 @@
+using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 using BurakOyun.Gameplay;
 using BurakOyun.Core;
 
 namespace BurakOyun.UI
 {
-    /// <summary>
-    /// İlerleme göstergesi (B U R A K), yıldız sayacı, feedback yazıları.
-    /// Yanlışta asla kırmızı X — gülen yüz + "Tekrar dene!".
-    /// </summary>
     public class UIManager : MonoBehaviour
     {
         [SerializeField] private WordManager wordManager;
         [SerializeField] private RewardManager rewardManager;
 
-        [Header("UI Referansları")]
-        [SerializeField] private TMP_Text progressText;   // "B U R A K" (toplananlar renkli)
+        [Header("HUD")]
+        [SerializeField] private TMP_Text progressText;
         [SerializeField] private TMP_Text starsText;
-        [SerializeField] private TMP_Text feedbackText;   // "Harika!" / "Tekrar dene! 🙂"
-        [SerializeField] private GameObject startPanel;   // büyük OYNA butonu
-        [SerializeField] private GameObject completePanel;// "Harika Burak!" + Tekrar Oyna
+        [SerializeField] private TMP_Text feedbackText;
+        [SerializeField] private TMP_Text highScoreText;   // "En İyi: ★ N"
+        [SerializeField] private Button pauseButton;
+        [SerializeField] private Button soundButton;
+        [SerializeField] private TMP_Text soundButtonLabel; // "🔊" / "🔇"
+
+        [Header("Paneller")]
+        [SerializeField] private GameObject startPanel;
+        [SerializeField] private GameObject completePanel;
+        [SerializeField] private GameObject pausePanel;
+        [SerializeField] private TMP_Text meaningText;   // "ELMA = 🍎"
+
+        [Header("Canvas")]
+        [SerializeField] private Canvas mainCanvas; // floating text parent
 
         [Header("Renkler")]
-        [SerializeField] private Color collectedColor = new Color(1f, 0.72f, 0.1f); // sıcak sarı
-        [SerializeField] private Color pendingColor = new Color(0.75f, 0.78f, 0.82f); // soluk gri
-
+        [SerializeField] private Color collectedColor = new Color(1f, 0.72f, 0.1f);
+        [SerializeField] private Color pendingColor   = new Color(0.75f, 0.78f, 0.82f);
         [SerializeField] private float feedbackDuration = 1.5f;
+
         private float feedbackTimer;
+        private float feedbackScale;
 
         private void OnEnable()
         {
-            wordManager.OnCorrectLetter += HandleCorrect;
-            wordManager.OnWrongLetter += HandleWrong;
-            wordManager.OnWordComplete += HandleComplete;
-            wordManager.OnWordReset += RefreshProgress;
-            rewardManager.OnStarsChanged += HandleStars;
+            if (wordManager == null) { Debug.LogError("[UIManager] wordManager atanmamış!"); return; }
+            wordManager.OnCorrectLetter  += HandleCorrect;
+            wordManager.OnWrongLetter    += HandleWrong;
+            wordManager.OnWordComplete   += HandleComplete;
+            wordManager.OnWordReset      += RefreshProgress;
+            if (rewardManager != null) rewardManager.OnStarsChanged += HandleStars;
         }
 
         private void OnDisable()
         {
-            wordManager.OnCorrectLetter -= HandleCorrect;
-            wordManager.OnWrongLetter -= HandleWrong;
-            wordManager.OnWordComplete -= HandleComplete;
-            wordManager.OnWordReset -= RefreshProgress;
-            rewardManager.OnStarsChanged -= HandleStars;
+            if (wordManager == null) return;
+            wordManager.OnCorrectLetter  -= HandleCorrect;
+            wordManager.OnWrongLetter    -= HandleWrong;
+            wordManager.OnWordComplete   -= HandleComplete;
+            wordManager.OnWordReset      -= RefreshProgress;
+            if (rewardManager != null) rewardManager.OnStarsChanged -= HandleStars;
         }
 
         private void Start()
@@ -51,17 +63,16 @@ namespace BurakOyun.UI
             RefreshProgress();
             ShowStart(true);
             ShowComplete(false);
+            ShowPause(false);
             if (feedbackText != null) feedbackText.text = "";
+            UpdateHighScore(SaveManager.BestStars);
         }
-
-        private float feedbackScale;
 
         private void Update()
         {
             if (feedbackTimer > 0f)
             {
                 feedbackTimer -= Time.deltaTime;
-                // Zıplayan feedback animasyonu
                 if (feedbackText != null)
                 {
                     feedbackScale = Mathf.Lerp(feedbackScale, 1f, Time.deltaTime * 8f);
@@ -75,13 +86,25 @@ namespace BurakOyun.UI
             }
         }
 
-        public void ShowStart(bool show) { if (startPanel != null) startPanel.SetActive(show); }
+        public void ShowStart(bool show)    { if (startPanel    != null) startPanel.SetActive(show); }
         public void ShowComplete(bool show) { if (completePanel != null) completePanel.SetActive(show); }
+        public void ShowPause(bool show)    { if (pausePanel    != null) pausePanel.SetActive(show); }
+
+        public void UpdateHighScore(int best)
+        {
+            if (highScoreText != null) highScoreText.text = "En İyi: ★ " + best;
+        }
+
+        public void UpdateSoundButton(bool soundOn)
+        {
+            if (soundButtonLabel != null) soundButtonLabel.text = soundOn ? "♪" : "✕";
+        }
 
         private void HandleCorrect(char letter, int index)
         {
             RefreshProgress();
             ShowFeedback("Aferin!");
+            SpawnFloatingText("+1 ★", new Color(1f, 0.85f, 0.1f));
         }
 
         private void HandleWrong(char letter) => ShowFeedback("Tekrar dene! :)");
@@ -89,6 +112,11 @@ namespace BurakOyun.UI
         private void HandleComplete()
         {
             ShowFeedback("HARİKA!");
+            if (meaningText != null)
+            {
+                string m = wordManager.WordData != null ? wordManager.WordData.meaning : "";
+                meaningText.text = string.IsNullOrEmpty(m) ? "" : $"{wordManager.Word} = {m}";
+            }
             ShowComplete(true);
         }
 
@@ -117,6 +145,40 @@ namespace BurakOyun.UI
                 sb.Append($"<color=#{ColorUtility.ToHtmlStringRGB(c)}>{word[i]}</color> ");
             }
             progressText.text = sb.ToString().TrimEnd();
+        }
+
+        private void SpawnFloatingText(string text, Color color)
+        {
+            if (mainCanvas == null) return;
+            var go = new GameObject("FloatingTxt");
+            go.transform.SetParent(mainCanvas.transform, false);
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.text = text;
+            tmp.fontSize = 52;
+            tmp.fontStyle = FontStyles.Bold;
+            tmp.color = color;
+            tmp.alignment = TextAlignmentOptions.Center;
+            var rt = tmp.rectTransform;
+            rt.sizeDelta = new Vector2(200f, 80f);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.45f);
+            rt.anchoredPosition = Vector2.zero;
+            StartCoroutine(AnimateFloat(rt, tmp));
+        }
+
+        private IEnumerator AnimateFloat(RectTransform rt, TextMeshProUGUI tmp)
+        {
+            float duration = 1.1f;
+            float elapsed = 0f;
+            Vector2 start = rt.anchoredPosition;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                rt.anchoredPosition = start + Vector2.up * (120f * t);
+                tmp.alpha = 1f - t;
+                yield return null;
+            }
+            Destroy(rt.gameObject);
         }
     }
 }

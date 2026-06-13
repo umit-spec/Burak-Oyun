@@ -40,8 +40,148 @@ namespace BurakOyun.Editor
                 Debug.Log("[BurakOyun] WordData_BURAK oluşturuldu.");
             }
 
+            // Temel kelimeler (dosya adı = kelime, anlam opsiyonel)
+            var basicWords = new (string word, string meaning)[]
+            {
+                ("ANNE",  "anne 👩"),
+                ("BABA",  "baba 👨"),
+                ("KEDI",  "kedi 🐱"),
+                ("ELMA",  "elma 🍎"),
+                ("OKUL",  "okul 🏫"),
+                ("ARABA", "araba 🚗"),
+                ("BALIK", "balık 🐟"),
+                ("KALEM", "kalem ✏"),
+                ("KITAP", "kitap 📚"),
+            };
+            foreach (var (w, m) in basicWords)
+            {
+                string wpath = $"Assets/Data/WordData_{w}.asset";
+                if (AssetDatabase.LoadAssetAtPath<ScriptableObject>(wpath) == null)
+                {
+                    var wd = ScriptableObject.CreateInstance<Data.WordData>();
+                    wd.word = w;
+                    wd.meaning = m;
+                    wd.letters = new Data.LetterAudioEntry[w.Length];
+                    for (int i = 0; i < w.Length; i++)
+                        wd.letters[i] = new Data.LetterAudioEntry { letter = w[i].ToString() };
+                    AssetDatabase.CreateAsset(wd, wpath);
+                }
+            }
+
+            // Renkler kategorisi
+            var colorWords = new (string file, string word, string meaning)[]
+            {
+                ("KIRMIZI", "KIRMIZI", "kırmızı ❤"),
+                ("MAVI",    "MAVİ",    "mavi 💙"),
+                ("SARI",    "SARI",    "sarı ⭐"),
+                ("YESIL",   "YEŞİL",   "yeşil 🌿"),
+                ("MOR",     "MOR",     "mor 💜"),
+                ("TURUNCU", "TURUNCU", "turuncu 🍊"),
+                ("PEMBE",   "PEMBE",   "pembe 🌸"),
+                ("BEYAZ",   "BEYAZ",   "beyaz ⬜"),
+                ("SIYAH",   "SİYAH",   "siyah ⬛"),
+            };
+            foreach (var (file, w, m) in colorWords)
+            {
+                string wpath = $"Assets/Data/WordData_{file}.asset";
+                if (AssetDatabase.LoadAssetAtPath<ScriptableObject>(wpath) == null)
+                {
+                    var wd = ScriptableObject.CreateInstance<Data.WordData>();
+                    wd.word = w; wd.meaning = m;
+                    wd.letters = new Data.LetterAudioEntry[w.Length];
+                    for (int i = 0; i < w.Length; i++)
+                        wd.letters[i] = new Data.LetterAudioEntry { letter = w[i].ToString() };
+                    AssetDatabase.CreateAsset(wd, wpath);
+                }
+            }
+
+            // Sayılar kategorisi
+            var numberWords = new (string file, string word, string meaning)[]
+            {
+                ("BIR",   "BİR",   "bir 1"),
+                ("IKI",   "İKİ",   "iki 2"),
+                ("UC",    "ÜÇ",    "üç 3"),
+                ("DORT",  "DÖRT",  "dört 4"),
+                ("BES",   "BEŞ",   "beş 5"),
+                ("ALTI",  "ALTI",  "altı 6"),
+                ("YEDI",  "YEDİ",  "yedi 7"),
+                ("SEKIZ", "SEKİZ", "sekiz 8"),
+                ("DOKUZ", "DOKUZ", "dokuz 9"),
+                ("ON",    "ON",    "on 10"),
+            };
+            foreach (var (file, w, m) in numberWords)
+            {
+                string wpath = $"Assets/Data/WordData_{file}.asset";
+                if (AssetDatabase.LoadAssetAtPath<ScriptableObject>(wpath) == null)
+                {
+                    var wd = ScriptableObject.CreateInstance<Data.WordData>();
+                    wd.word = w; wd.meaning = m;
+                    wd.letters = new Data.LetterAudioEntry[w.Length];
+                    for (int i = 0; i < w.Length; i++)
+                        wd.letters[i] = new Data.LetterAudioEntry { letter = w[i].ToString() };
+                    AssetDatabase.CreateAsset(wd, wpath);
+                }
+            }
+
+            // Hayvanlar kategorisi (ekstra)
+            var animalWords = new (string file, string word, string meaning)[]
+            {
+                ("KOPEK",     "KÖPEK",     "köpek 🐕"),
+                ("AT",        "AT",        "at 🐴"),
+                ("KECI",      "KEÇİ",      "keçi 🐐"),
+                ("INEK",      "İNEK",      "inek 🐄"),
+                ("TAVUK",     "TAVUK",     "tavuk 🐔"),
+                ("KURBAGA",   "KURBAĞA",   "kurbağa 🐸"),
+                ("PENGUEN",   "PENGUEN",   "penguen 🐧"),
+                ("ASLAN",     "ASLAN",     "aslan 🦁"),
+            };
+            foreach (var (file, w, m) in animalWords)
+            {
+                string wpath = $"Assets/Data/WordData_{file}.asset";
+                if (AssetDatabase.LoadAssetAtPath<ScriptableObject>(wpath) == null)
+                {
+                    var wd = ScriptableObject.CreateInstance<Data.WordData>();
+                    wd.word = w; wd.meaning = m;
+                    wd.letters = new Data.LetterAudioEntry[w.Length];
+                    for (int i = 0; i < w.Length; i++)
+                        wd.letters[i] = new Data.LetterAudioEntry { letter = w[i].ToString() };
+                    AssetDatabase.CreateAsset(wd, wpath);
+                }
+            }
+
+            // Aile isimleri (ASCII dosya adı → Türkçe kelime)
+            var familyWords = new (string file, string word)[]
+            {
+                ("HALIME",  "HALİME"),
+                ("SEHER",   "SEHER"),
+                ("UMIT",    "ÜMİT"),
+                ("PERIHAN", "PERİHAN"),
+                ("MESUT",   "MESUT"),
+                ("ISA",     "İSA"),
+                ("SALIH",   "SALİH"),
+                ("NAZIR",   "NAZIR"),
+                ("DENIZ",   "DENİZ"),
+                ("YAGMUR",  "YAĞMUR"),
+                ("ZEYNEP",  "ZEYNEP"),
+                ("UFUK",    "UFUK"),
+                ("SEVIM",   "SEVİM"),
+                ("BERKAN",  "BERKAN"),
+            };
+            foreach (var (file, word) in familyWords)
+            {
+                string wpath = $"Assets/Data/WordData_{file}.asset";
+                if (AssetDatabase.LoadAssetAtPath<ScriptableObject>(wpath) == null)
+                {
+                    var wd = ScriptableObject.CreateInstance<Data.WordData>();
+                    wd.word = word;
+                    wd.letters = new Data.LetterAudioEntry[word.Length];
+                    for (int i = 0; i < word.Length; i++)
+                        wd.letters[i] = new Data.LetterAudioEntry { letter = word[i].ToString() };
+                    AssetDatabase.CreateAsset(wd, wpath);
+                }
+            }
             AssetDatabase.SaveAssets();
-            Debug.Log("[BurakOyun] ✓ Asset'ler hazır.");
+            Debug.Log("[BurakOyun] ✓ Tüm kelime assetleri hazır (BURAK + temel + renkler + sayılar + hayvanlar + isimler = 60+ kelime).");
         }
 
         [MenuItem("BurakOyun/2 — Letter Prefab Oluştur", priority = 2)]
@@ -274,6 +414,7 @@ namespace BurakOyun.Editor
             var laneInput = snakeGo.AddComponent<Gameplay.LaneInput>();
             var snakeCtrl = snakeGo.AddComponent<Gameplay.SnakeController>();
             SetField(snakeCtrl, "config", config);
+            var snakeTail = snakeGo.AddComponent<Gameplay.SnakeTail>();
 
             // ── Kamera ──
             var cam = Camera.main;
@@ -292,6 +433,28 @@ namespace BurakOyun.Editor
 
             var wordMgr = managers.AddComponent<Gameplay.WordManager>();
             SetField(wordMgr, "wordData", wordData);
+
+            // Kelime listesini yükle ve ata
+            var allWordNames = new[] {
+                // Temel
+                "BURAK","ANNE","BABA","KEDI","ELMA","OKUL","ARABA","BALIK","KALEM","KITAP",
+                // İsimler
+                "HALIME","SEHER","UMIT","PERIHAN","MESUT","ISA",
+                "SALIH","NAZIR","DENIZ","YAGMUR","ZEYNEP","UFUK","SEVIM","BERKAN",
+                // Renkler
+                "KIRMIZI","MAVI","SARI","YESIL","MOR","TURUNCU","PEMBE","BEYAZ","SIYAH",
+                // Sayılar
+                "BIR","IKI","UC","DORT","BES","ALTI","YEDI","SEKIZ","DOKUZ","ON",
+                // Hayvanlar
+                "KOPEK","AT","KECI","INEK","TAVUK","KURBAGA","PENGUEN","ASLAN",
+            };
+            var allWords = new System.Collections.Generic.List<Data.WordData>();
+            foreach (var name in allWordNames)
+            {
+                var wd = AssetDatabase.LoadAssetAtPath<Data.WordData>($"Assets/Data/WordData_{name}.asset");
+                if (wd != null) allWords.Add(wd);
+            }
+            SetWordList(wordMgr, allWords.ToArray());
 
             // ── LetterSpawner ──
             var spawnRoot = new GameObject("LetterSpawnRoot");
@@ -368,9 +531,29 @@ namespace BurakOyun.Editor
             SetField(audioMgr, "voiceSource", voiceSrc);
             SetField(audioMgr, "musicSource", musicSrc);
 
+            // Ses: Kenney OGG önce dene, yoksa Dustyroom WAV, yoksa prosedürel
+            var dingClip     = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Kenney/Collection/letter_collect.ogg")
+                            ?? AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Dustyroom/DM-CGS-08.wav");
+            var boingClip    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Kenney/Collection/wrong_letter.ogg")
+                            ?? AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Dustyroom/DM-CGS-33.wav");
+            var applauseClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Kenney/Collection/word_complete.ogg")
+                            ?? AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Dustyroom/DM-CGS-22.wav");
+
+            if (dingClip     != null) SetField(audioMgr, "dingClip",     dingClip);
+            if (boingClip    != null) SetField(audioMgr, "boingClip",    boingClip);
+            if (applauseClip != null) SetField(audioMgr, "applauseClip", applauseClip);
+
+            if (dingClip != null)
+                Debug.Log($"[BurakOyun] ✓ Ses klipleri bağlandı ({dingClip.name} / {boingClip?.name} / {applauseClip?.name}).");
+            else
+                Debug.Log("[BurakOyun] Harici ses bulunamadı — prosedürel ses kullanılacak.");
+
             // ── UI Canvas ──
-            var canvas = CreateUICanvas(wordMgr, rewardMgr, out var startPanel, out var completePanel,
-                out var progressTxt, out var starsTxt, out var feedbackTxt);
+            var canvas = CreateUICanvas(wordMgr, rewardMgr,
+                out var startPanel, out var completePanel,
+                out var progressTxt, out var starsTxt, out var feedbackTxt,
+                out var highScoreTxt, out var meaningTxt, out var pausePanel,
+                out var pauseBtn, out var soundBtn, out var soundBtnLabel);
 
             // ── UIManager ──
             var uiMgr = canvas.gameObject.AddComponent<UI.UIManager>();
@@ -379,30 +562,41 @@ namespace BurakOyun.Editor
             SetField(uiMgr, "progressText", progressTxt);
             SetField(uiMgr, "starsText", starsTxt);
             SetField(uiMgr, "feedbackText", feedbackTxt);
+            SetField(uiMgr, "highScoreText", highScoreTxt);
+            SetField(uiMgr, "meaningText", meaningTxt);
             SetField(uiMgr, "startPanel", startPanel);
             SetField(uiMgr, "completePanel", completePanel);
+            SetField(uiMgr, "pausePanel", pausePanel);
+            SetField(uiMgr, "pauseButton", pauseBtn);
+            SetField(uiMgr, "soundButton", soundBtn);
+            SetField(uiMgr, "soundButtonLabel", soundBtnLabel);
+            SetField(uiMgr, "mainCanvas", canvas.GetComponent<Canvas>());
 
             // ── GameManager ──
             var gameMgr = managers.AddComponent<Core.GameManager>();
             SetField(gameMgr, "snake", snakeCtrl);
+            SetField(gameMgr, "snakeTail", snakeTail);
             SetField(gameMgr, "spawner", spawner);
             SetField(gameMgr, "wordManager", wordMgr);
             SetField(gameMgr, "rewardManager", rewardMgr);
             SetField(gameMgr, "ui", uiMgr);
+            SetField(gameMgr, "audioManager", managers.GetComponent<Audio.AudioManager>());
+            SetField(gameMgr, "cameraFollow", camFollow);
 
             // Butonları bağla
-            var startBtn = startPanel.GetComponentInChildren<Button>();
+            var startBtn2 = startPanel.GetComponentInChildren<Button>();
             var replayBtn = completePanel.GetComponentInChildren<Button>();
-            if (startBtn != null)
-            {
-                UnityEditor.Events.UnityEventTools.AddPersistentListener(
-                    startBtn.onClick, gameMgr.StartGame);
-            }
+            var resumeBtn = pausePanel.GetComponentInChildren<Button>();
+            if (startBtn2 != null)
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(startBtn2.onClick, gameMgr.StartGame);
             if (replayBtn != null)
-            {
-                UnityEditor.Events.UnityEventTools.AddPersistentListener(
-                    replayBtn.onClick, gameMgr.Replay);
-            }
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(replayBtn.onClick, gameMgr.Replay);
+            if (resumeBtn != null)
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(resumeBtn.onClick, gameMgr.TogglePause);
+            if (pauseBtn != null)
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(pauseBtn.onClick, gameMgr.TogglePause);
+            if (soundBtn != null)
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(soundBtn.onClick, gameMgr.ToggleSound);
 
             // ── Işık ──
             if (Object.FindFirstObjectByType<Light>() == null)
@@ -435,7 +629,10 @@ namespace BurakOyun.Editor
         static GameObject CreateUICanvas(Gameplay.WordManager wordMgr,
             Core.RewardManager rewardMgr,
             out GameObject startPanel, out GameObject completePanel,
-            out TMP_Text progressTxt, out TMP_Text starsTxt, out TMP_Text feedbackTxt)
+            out TMP_Text progressTxt, out TMP_Text starsTxt, out TMP_Text feedbackTxt,
+            out TMP_Text highScoreTxt, out TMP_Text meaningTxt,
+            out GameObject pausePanel,
+            out Button pauseBtn, out Button soundBtn, out TMP_Text soundBtnLabel)
         {
             // Canvas
             var canvasGo = new GameObject("UI Canvas");
@@ -447,12 +644,23 @@ namespace BurakOyun.Editor
             scaler.referenceResolution = new Vector2(1920, 1080);
             canvasGo.AddComponent<GraphicRaycaster>();
 
-            // EventSystem
-            if (Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+            // EventSystem — Android'de StandaloneInputModule çalışmaz, InputSystemUIInputModule zorunlu
+            var existingES = Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>();
+            if (existingES == null)
             {
                 var es = new GameObject("EventSystem");
                 es.AddComponent<UnityEngine.EventSystems.EventSystem>();
                 es.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+                es.AddComponent<Core.EventSystemFixer>(); // runtime self-heal
+            }
+            else
+            {
+                var old = existingES.GetComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+                if (old != null) Object.DestroyImmediate(old);
+                if (existingES.GetComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>() == null)
+                    existingES.gameObject.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+                if (existingES.GetComponent<Core.EventSystemFixer>() == null)
+                    existingES.gameObject.AddComponent<Core.EventSystemFixer>();
             }
 
             // Progress text (üst orta)
@@ -475,9 +683,24 @@ namespace BurakOyun.Editor
                 new Vector2(600f, 100f));
             feedbackTxt.color = new Color(1f, 0.5f, 0.1f);
 
+            // ── Duraklat butonu (sağ üst) ──
+            pauseBtn = CreateButton(canvasGo.transform, "BtnPause", "❚❚",
+                new Vector2(1f, 1f), new Vector2(90f, 90f), new Color(0.2f, 0.2f, 0.2f, 0.7f));
+            var pauseRt = pauseBtn.GetComponent<RectTransform>();
+            pauseRt.anchorMin = pauseRt.anchorMax = new Vector2(1f, 1f);
+            pauseRt.anchoredPosition = new Vector2(-55f, -55f);
+
+            // ── Ses butonu (sağ üstte, duraklat'ın solunda) ──
+            soundBtn = CreateButton(canvasGo.transform, "BtnSound", "♪",
+                new Vector2(1f, 1f), new Vector2(90f, 90f), new Color(0.2f, 0.2f, 0.2f, 0.7f));
+            var soundRt = soundBtn.GetComponent<RectTransform>();
+            soundRt.anchorMin = soundRt.anchorMax = new Vector2(1f, 1f);
+            soundRt.anchoredPosition = new Vector2(-155f, -55f);
+            soundBtnLabel = soundBtn.GetComponentInChildren<TMP_Text>();
+
             // ── Start Panel ──
             startPanel = CreatePanel(canvasGo.transform, "StartPanel",
-                new Color(0f, 0f, 0f, 0.5f));
+                new Color(0f, 0f, 0f, 0.55f));
             CreateTMPText(startPanel.transform, "Title", "BURAK\nHarf Oyunu", 80,
                 TextAlignmentOptions.Center,
                 new Vector2(0.5f, 0.65f), new Vector2(0.5f, 0.65f), Vector2.zero,
@@ -488,15 +711,37 @@ namespace BurakOyun.Editor
 
             // ── Complete Panel ──
             completePanel = CreatePanel(canvasGo.transform, "CompletePanel",
-                new Color(0f, 0f, 0f, 0.5f));
-            CreateTMPText(completePanel.transform, "CompleteTitle", "HARİKA!\nBURAK", 80,
+                new Color(0f, 0f, 0f, 0.55f));
+            CreateTMPText(completePanel.transform, "CompleteTitle", "HARİKA!", 80,
                 TextAlignmentOptions.Center,
-                new Vector2(0.5f, 0.65f), new Vector2(0.5f, 0.65f), Vector2.zero,
-                new Vector2(800f, 250f));
+                new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero,
+                new Vector2(800f, 150f));
+            highScoreTxt = CreateTMPText(completePanel.transform, "HighScoreText",
+                "En İyi: ★ 0", 48, TextAlignmentOptions.Center,
+                new Vector2(0.5f, 0.57f), new Vector2(0.5f, 0.57f), Vector2.zero,
+                new Vector2(600f, 70f));
+            highScoreTxt.color = new Color(1f, 0.85f, 0.1f);
+            meaningTxt = CreateTMPText(completePanel.transform, "MeaningText",
+                "", 54, TextAlignmentOptions.Center,
+                new Vector2(0.5f, 0.47f), new Vector2(0.5f, 0.47f), Vector2.zero,
+                new Vector2(700f, 80f));
+            meaningTxt.color = new Color(0.9f, 0.9f, 1f);
             CreateButton(completePanel.transform, "BtnReplay", "TEKRAR OYNA",
                 new Vector2(0.5f, 0.35f), new Vector2(400f, 120f),
                 new Color(0.3f, 0.6f, 1f));
             completePanel.SetActive(false);
+
+            // ── Pause Panel ──
+            pausePanel = CreatePanel(canvasGo.transform, "PausePanel",
+                new Color(0f, 0f, 0f, 0.65f));
+            CreateTMPText(pausePanel.transform, "PauseTitle", "DURAKLADI", 80,
+                TextAlignmentOptions.Center,
+                new Vector2(0.5f, 0.6f), new Vector2(0.5f, 0.6f), Vector2.zero,
+                new Vector2(700f, 150f));
+            CreateButton(pausePanel.transform, "BtnResume", "DEVAM ET",
+                new Vector2(0.5f, 0.38f), new Vector2(380f, 120f),
+                new Color(0.2f, 0.75f, 0.3f));
+            pausePanel.SetActive(false);
 
             return canvasGo;
         }
@@ -569,6 +814,17 @@ namespace BurakOyun.Editor
             txtRt.offsetMax = Vector2.zero;
 
             return btn;
+        }
+
+        static void SetWordList(Gameplay.WordManager wm, Data.WordData[] words)
+        {
+            var so = new SerializedObject(wm);
+            var prop = so.FindProperty("wordList");
+            if (prop == null) { Debug.LogWarning("[BurakOyun] wordList alanı bulunamadı."); return; }
+            prop.arraySize = words.Length;
+            for (int i = 0; i < words.Length; i++)
+                prop.GetArrayElementAtIndex(i).objectReferenceValue = words[i];
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         static void SetField(object target, string fieldName, object value)
