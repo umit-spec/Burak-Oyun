@@ -1,20 +1,17 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 
 namespace BurakOyun.Gameplay
 {
-    /// <summary>
     /// Input soyutlaması: klavye (PC) + dokunmatik (Android).
-    /// Dokunmatik: ekranın sol/sağ yarısına tap VEYA sola/sağa swipe.
-    /// SnakeController bu sınıfı bilmez — sadece ConsumeLaneChange() çağırır.
-    /// </summary>
+    /// Sadece yılan hareket ediyorken (Playing state) input okur.
+    /// UI üzerindeki dokunmalar hiçbir zaman oyun inputu olarak işlenmez.
+    [RequireComponent(typeof(SnakeController))]
     public class LaneInput : MonoBehaviour
     {
-        // Swipe olarak sayılacak minimum yatay piksel mesafesi (ekran genişliğinin ~%8'i).
-        // Bu değerin altındaki harekete tap muamelesi yapılır.
-        [SerializeField] private float swipeThreshold = 0.08f; // Screen.width ile çarpılır
+        [SerializeField] private float swipeThreshold = 0.08f;
 
-        /// -1 = sola geç, +1 = sağa geç, 0 = yok. Her frame sıfırlanır.
         public int ConsumeLaneChange()
         {
             int dir = pendingDir;
@@ -24,9 +21,18 @@ namespace BurakOyun.Gameplay
 
         private int pendingDir;
         private Vector2 touchStart;
+        private bool touchStartedOverUI;
+        private SnakeController snake;
+
+        private void Awake()
+        {
+            snake = GetComponent<SnakeController>();
+        }
 
         private void Update()
         {
+            // Menü, pause veya WordComplete durumunda input okuma — UI butonları çalışsın
+            if (snake != null && !snake.IsMoving) return;
             ReadKeyboard();
             ReadTouch();
         }
@@ -51,18 +57,31 @@ namespace BurakOyun.Gameplay
             if (phase == UnityEngine.InputSystem.TouchPhase.Began)
             {
                 touchStart = ts.primaryTouch.position.ReadValue();
+                int fingerId = (int)ts.primaryTouch.touchId.ReadValue();
+                // UI üstündeyse bu touch'u oyun inputu sayma
+                touchStartedOverUI = IsOverUI(fingerId);
             }
             else if (phase == UnityEngine.InputSystem.TouchPhase.Ended)
             {
+                if (touchStartedOverUI) { touchStartedOverUI = false; return; }
+
                 Vector2 end = ts.primaryTouch.position.ReadValue();
                 float dx = end.x - touchStart.x;
                 float threshold = Screen.width * swipeThreshold;
-
-                // Swipe ise yönüne, tap ise ekranın hangi yarısına basıldığına bak
                 pendingDir = Mathf.Abs(dx) >= threshold
                     ? (dx > 0 ? 1 : -1)
                     : (touchStart.x < Screen.width * 0.5f ? -1 : 1);
+                touchStartedOverUI = false;
             }
+        }
+
+        private static bool IsOverUI(int fingerId)
+        {
+            if (EventSystem.current == null) return false;
+            // Touch pointer check (Android)
+            if (EventSystem.current.IsPointerOverGameObject(fingerId)) return true;
+            // Mouse/editor fallback
+            return EventSystem.current.IsPointerOverGameObject();
         }
     }
 }

@@ -651,14 +651,16 @@ namespace BurakOyun.Editor
                 var es = new GameObject("EventSystem");
                 es.AddComponent<UnityEngine.EventSystems.EventSystem>();
                 es.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+                es.AddComponent<Core.EventSystemFixer>(); // runtime self-heal
             }
             else
             {
-                // Eski StandaloneInputModule varsa kaldır, yeni modülü ekle
                 var old = existingES.GetComponent<UnityEngine.EventSystems.StandaloneInputModule>();
                 if (old != null) Object.DestroyImmediate(old);
                 if (existingES.GetComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>() == null)
                     existingES.gameObject.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+                if (existingES.GetComponent<Core.EventSystemFixer>() == null)
+                    existingES.gameObject.AddComponent<Core.EventSystemFixer>();
             }
 
             // Progress text (üst orta)
