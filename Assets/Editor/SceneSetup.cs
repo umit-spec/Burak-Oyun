@@ -65,6 +65,10 @@ namespace BurakOyun.Editor
                 ("PERIHAN", "PERİHAN"),
                 ("MESUT",   "MESUT"),
                 ("ISA",     "İSA"),
+                ("SALIH",   "SALİH"),
+                ("NAZIR",   "NAZIR"),
+                ("DENIZ",   "DENİZ"),
+                ("YAGMUR",  "YAĞMUR"),
             };
             foreach (var (file, word) in familyWords)
             {
@@ -80,7 +84,7 @@ namespace BurakOyun.Editor
                 }
             }
             AssetDatabase.SaveAssets();
-            Debug.Log("[BurakOyun] ✓ Tüm kelime assetleri hazır (BURAK + 9 kelime + 6 aile ismi = 16 kelime).");
+            Debug.Log("[BurakOyun] ✓ Tüm kelime assetleri hazır (BURAK + 9 kelime + 10 aile ismi = 20 kelime).");
         }
 
         [MenuItem("BurakOyun/2 — Letter Prefab Oluştur", priority = 2)]
@@ -335,7 +339,8 @@ namespace BurakOyun.Editor
             // Kelime listesini yükle ve ata
             var allWordNames = new[] {
                 "BURAK","ANNE","BABA","KEDI","ELMA","OKUL","ARABA","BALIK","KALEM","KITAP",
-                "HALIME","SEHER","UMIT","PERIHAN","MESUT","ISA"
+                "HALIME","SEHER","UMIT","PERIHAN","MESUT","ISA",
+                "SALIH","NAZIR","DENIZ","YAGMUR"
             };
             var allWords = new System.Collections.Generic.List<Data.WordData>();
             foreach (var name in allWordNames)
