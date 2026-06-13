@@ -40,8 +40,23 @@ namespace BurakOyun.Editor
                 Debug.Log("[BurakOyun] WordData_BURAK oluşturuldu.");
             }
 
+            // Çoklu kelime assetleri
+            string[] extraWords = { "ANNE", "BABA", "KEDI", "ELMA", "OKUL", "ARABA", "BALIK", "KALEM", "KITAP" };
+            foreach (var w in extraWords)
+            {
+                string wpath = $"Assets/Data/WordData_{w}.asset";
+                if (AssetDatabase.LoadAssetAtPath<ScriptableObject>(wpath) == null)
+                {
+                    var wd = ScriptableObject.CreateInstance<Data.WordData>();
+                    wd.word = w;
+                    wd.letters = new Data.LetterAudioEntry[w.Length];
+                    for (int i = 0; i < w.Length; i++)
+                        wd.letters[i] = new Data.LetterAudioEntry { letter = w[i].ToString() };
+                    AssetDatabase.CreateAsset(wd, wpath);
+                }
+            }
             AssetDatabase.SaveAssets();
-            Debug.Log("[BurakOyun] ✓ Asset'ler hazır.");
+            Debug.Log("[BurakOyun] ✓ Tüm kelime assetleri hazır (BURAK + 9 kelime).");
         }
 
         [MenuItem("BurakOyun/2 — Letter Prefab Oluştur", priority = 2)]
@@ -292,6 +307,16 @@ namespace BurakOyun.Editor
 
             var wordMgr = managers.AddComponent<Gameplay.WordManager>();
             SetField(wordMgr, "wordData", wordData);
+
+            // Kelime listesini yükle ve ata
+            var allWordNames = new[] { "BURAK","ANNE","BABA","KEDI","ELMA","OKUL","ARABA","BALIK","KALEM","KITAP" };
+            var allWords = new System.Collections.Generic.List<Data.WordData>();
+            foreach (var name in allWordNames)
+            {
+                var wd = AssetDatabase.LoadAssetAtPath<Data.WordData>($"Assets/Data/WordData_{name}.asset");
+                if (wd != null) allWords.Add(wd);
+            }
+            SetWordList(wordMgr, allWords.ToArray());
 
             // ── LetterSpawner ──
             var spawnRoot = new GameObject("LetterSpawnRoot");
@@ -569,6 +594,17 @@ namespace BurakOyun.Editor
             txtRt.offsetMax = Vector2.zero;
 
             return btn;
+        }
+
+        static void SetWordList(Gameplay.WordManager wm, Data.WordData[] words)
+        {
+            var so = new SerializedObject(wm);
+            var prop = so.FindProperty("wordList");
+            if (prop == null) { Debug.LogWarning("[BurakOyun] wordList alanı bulunamadı."); return; }
+            prop.arraySize = words.Length;
+            for (int i = 0; i < words.Length; i++)
+                prop.GetArrayElementAtIndex(i).objectReferenceValue = words[i];
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         static void SetField(object target, string fieldName, object value)
