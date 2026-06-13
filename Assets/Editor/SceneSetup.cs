@@ -420,15 +420,22 @@ namespace BurakOyun.Editor
             SetField(audioMgr, "voiceSource", voiceSrc);
             SetField(audioMgr, "musicSource", musicSrc);
 
-            // Kenney sesleri varsa bağla (Assets/Audio/Kenney/)
-            var kenneyDing = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Kenney/Collection/letter_collect.ogg");
-            var kenneyBoing = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Kenney/Collection/wrong_letter.ogg");
-            var kenneyApplause = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Kenney/Collection/word_complete.ogg");
-            if (kenneyDing != null)     SetField(audioMgr, "dingClip",     kenneyDing);
-            if (kenneyBoing != null)    SetField(audioMgr, "boingClip",    kenneyBoing);
-            if (kenneyApplause != null) SetField(audioMgr, "applauseClip", kenneyApplause);
-            if (kenneyDing != null) Debug.Log("[BurakOyun] ✓ Kenney sesleri bağlandı.");
-            else Debug.Log("[BurakOyun] Kenney sesleri henüz import edilmemiş — prosedürel ses kullanılacak.");
+            // Ses: Kenney OGG önce dene, yoksa Dustyroom WAV, yoksa prosedürel
+            var dingClip     = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Kenney/Collection/letter_collect.ogg")
+                            ?? AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Dustyroom/DM-CGS-08.wav");
+            var boingClip    = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Kenney/Collection/wrong_letter.ogg")
+                            ?? AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Dustyroom/DM-CGS-33.wav");
+            var applauseClip = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Kenney/Collection/word_complete.ogg")
+                            ?? AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Dustyroom/DM-CGS-22.wav");
+
+            if (dingClip     != null) SetField(audioMgr, "dingClip",     dingClip);
+            if (boingClip    != null) SetField(audioMgr, "boingClip",    boingClip);
+            if (applauseClip != null) SetField(audioMgr, "applauseClip", applauseClip);
+
+            if (dingClip != null)
+                Debug.Log($"[BurakOyun] ✓ Ses klipleri bağlandı ({dingClip.name} / {boingClip?.name} / {applauseClip?.name}).");
+            else
+                Debug.Log("[BurakOyun] Harici ses bulunamadı — prosedürel ses kullanılacak.");
 
             // ── UI Canvas ──
             var canvas = CreateUICanvas(wordMgr, rewardMgr, out var startPanel, out var completePanel,
