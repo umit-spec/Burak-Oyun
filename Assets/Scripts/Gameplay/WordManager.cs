@@ -11,6 +11,7 @@ namespace BurakOyun.Gameplay
     public class WordManager : MonoBehaviour
     {
         [SerializeField] private WordData wordData;
+        [SerializeField] private WordData[] wordList; // çoklu kelime desteği
 
         public event Action<char, int> OnCorrectLetter;   // harf, yeni index
         public event Action<char> OnWrongLetter;
@@ -27,6 +28,13 @@ namespace BurakOyun.Gameplay
 
         private void Awake()
         {
+            SelectWord();
+        }
+
+        private void SelectWord()
+        {
+            if (wordList != null && wordList.Length > 0)
+                wordData = wordList[UnityEngine.Random.Range(0, wordList.Length)];
             progress = new WordProgress(wordData != null ? wordData.word : "BURAK");
         }
 
@@ -49,7 +57,7 @@ namespace BurakOyun.Gameplay
 
         public void ResetWord()
         {
-            progress.Reset();
+            SelectWord();
             OnWordReset?.Invoke();
         }
     }
