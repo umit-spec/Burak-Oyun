@@ -420,6 +420,16 @@ namespace BurakOyun.Editor
             SetField(audioMgr, "voiceSource", voiceSrc);
             SetField(audioMgr, "musicSource", musicSrc);
 
+            // Kenney sesleri varsa bağla (Assets/Audio/Kenney/)
+            var kenneyDing = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Kenney/Collection/letter_collect.ogg");
+            var kenneyBoing = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Kenney/Collection/wrong_letter.ogg");
+            var kenneyApplause = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Audio/Kenney/Collection/word_complete.ogg");
+            if (kenneyDing != null)     SetField(audioMgr, "dingClip",     kenneyDing);
+            if (kenneyBoing != null)    SetField(audioMgr, "boingClip",    kenneyBoing);
+            if (kenneyApplause != null) SetField(audioMgr, "applauseClip", kenneyApplause);
+            if (kenneyDing != null) Debug.Log("[BurakOyun] ✓ Kenney sesleri bağlandı.");
+            else Debug.Log("[BurakOyun] Kenney sesleri henüz import edilmemiş — prosedürel ses kullanılacak.");
+
             // ── UI Canvas ──
             var canvas = CreateUICanvas(wordMgr, rewardMgr, out var startPanel, out var completePanel,
                 out var progressTxt, out var starsTxt, out var feedbackTxt);
