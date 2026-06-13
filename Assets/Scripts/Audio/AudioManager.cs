@@ -40,6 +40,7 @@ namespace BurakOyun.Audio
 
         private void OnEnable()
         {
+            if (wordManager == null) { Debug.LogError("[AudioManager] wordManager atanmamış!"); return; }
             wordManager.OnCorrectLetter += HandleCorrect;
             wordManager.OnWrongLetter   += HandleWrong;
             wordManager.OnWordComplete  += HandleComplete;
@@ -47,6 +48,7 @@ namespace BurakOyun.Audio
 
         private void OnDisable()
         {
+            if (wordManager == null) return;
             wordManager.OnCorrectLetter -= HandleCorrect;
             wordManager.OnWrongLetter   -= HandleWrong;
             wordManager.OnWordComplete  -= HandleComplete;

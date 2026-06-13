@@ -22,6 +22,7 @@ namespace BurakOyun.Core
 
         private void OnEnable()
         {
+            if (wordManager == null) { Debug.LogError("[GameManager] wordManager atanmamış!"); return; }
             wordManager.OnCorrectLetter += HandleCorrect;
             wordManager.OnWrongLetter   += HandleWrong;
             wordManager.OnWordComplete  += HandleWordComplete;
@@ -29,6 +30,7 @@ namespace BurakOyun.Core
 
         private void OnDisable()
         {
+            if (wordManager == null) return;
             wordManager.OnCorrectLetter -= HandleCorrect;
             wordManager.OnWrongLetter   -= HandleWrong;
             wordManager.OnWordComplete  -= HandleWordComplete;

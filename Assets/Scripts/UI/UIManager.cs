@@ -39,20 +39,22 @@ namespace BurakOyun.UI
 
         private void OnEnable()
         {
-            wordManager.OnCorrectLetter += HandleCorrect;
-            wordManager.OnWrongLetter   += HandleWrong;
-            wordManager.OnWordComplete  += HandleComplete;
-            wordManager.OnWordReset     += RefreshProgress;
-            rewardManager.OnStarsChanged += HandleStars;
+            if (wordManager == null) { Debug.LogError("[UIManager] wordManager atanmamış!"); return; }
+            wordManager.OnCorrectLetter  += HandleCorrect;
+            wordManager.OnWrongLetter    += HandleWrong;
+            wordManager.OnWordComplete   += HandleComplete;
+            wordManager.OnWordReset      += RefreshProgress;
+            if (rewardManager != null) rewardManager.OnStarsChanged += HandleStars;
         }
 
         private void OnDisable()
         {
-            wordManager.OnCorrectLetter -= HandleCorrect;
-            wordManager.OnWrongLetter   -= HandleWrong;
-            wordManager.OnWordComplete  -= HandleComplete;
-            wordManager.OnWordReset     -= RefreshProgress;
-            rewardManager.OnStarsChanged -= HandleStars;
+            if (wordManager == null) return;
+            wordManager.OnCorrectLetter  -= HandleCorrect;
+            wordManager.OnWrongLetter    -= HandleWrong;
+            wordManager.OnWordComplete   -= HandleComplete;
+            wordManager.OnWordReset      -= RefreshProgress;
+            if (rewardManager != null) rewardManager.OnStarsChanged -= HandleStars;
         }
 
         private void Start()
