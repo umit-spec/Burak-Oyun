@@ -17,7 +17,7 @@ namespace BurakOyun.Gameplay
 
         // Shader.Find tek seferlik; MaterialPropertyBlock per-renderer renk ayarı
         private static Material s_baseMat;
-        private static readonly MaterialPropertyBlock s_block = new();
+        private static MaterialPropertyBlock s_block;
 
         public int Count => segments.Count;
 
@@ -74,6 +74,8 @@ namespace BurakOyun.Gameplay
             // Tek paylaşımlı material + MaterialPropertyBlock: yeni Material() yaratılmaz (M-2)
             if (s_baseMat == null)
                 s_baseMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            if (s_block == null)
+                s_block = new MaterialPropertyBlock();
 
             var rend = g.GetComponent<Renderer>();
             rend.sharedMaterial = s_baseMat;
