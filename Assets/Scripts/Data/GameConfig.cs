@@ -20,7 +20,7 @@ namespace BurakOyun.Data
         public float minTickInterval = 0.12f;
 
         [Header("Harf Spawn")]
-        [Range(1, 2)] public int decoyCount = 2;
+        [Range(0, 5)] public int decoyCount = 2;
         [Tooltip("Çeldirici havuzu (Türk alfabesi, büyük harf).")]
         public string decoyAlphabet = "ABCÇDEFGHIİJKLMNOÖPRSŞTUÜVYZ";
     }

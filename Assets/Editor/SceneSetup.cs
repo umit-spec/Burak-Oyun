@@ -202,7 +202,6 @@ namespace BurakOyun.Editor
             board.AddComponent<Gameplay.LetterGlow>();
             AssetDatabase.CreateAsset(boardMat, "Assets/Prefabs/LetterBoardMat.mat");
 
-            board.GetComponent<BoxCollider>().isTrigger = true;
             Object.DestroyImmediate(board.GetComponent<BoxCollider>());
             var col = go.AddComponent<BoxCollider>();
             col.isTrigger = true;

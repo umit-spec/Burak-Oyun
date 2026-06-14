@@ -36,6 +36,11 @@ namespace BurakOyun.Gameplay
             mat.color = pulsedColor;
         }
 
+        private void OnDestroy()
+        {
+            if (mat != null) Destroy(mat);
+        }
+
         public void SetColor(Color c)
         {
             glowColor = c;

@@ -15,6 +15,10 @@ namespace BurakOyun.Gameplay
         private static readonly Color HeadColor = new(0.2f, 0.85f, 0.3f);
         private static readonly Color TailColor  = new(0.05f, 0.4f, 0.12f);
 
+        // Shader.Find tek seferlik; MaterialPropertyBlock per-renderer renk ayarı
+        private static Material s_baseMat;
+        private static readonly MaterialPropertyBlock s_block = new();
+
         public int Count => segments.Count;
 
         private void Awake() => snake = GetComponent<SnakeController>();
@@ -67,10 +71,14 @@ namespace BurakOyun.Gameplay
             float sc = board != null ? board.Cell * 0.82f : 1.2f;
             g.transform.localScale = Vector3.one * sc;
 
-            float t = Mathf.Clamp01(idx / 8f);
-            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            mat.color = Color.Lerp(HeadColor, TailColor, t);
-            g.GetComponent<Renderer>().sharedMaterial = mat;
+            // Tek paylaşımlı material + MaterialPropertyBlock: yeni Material() yaratılmaz (M-2)
+            if (s_baseMat == null)
+                s_baseMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+
+            var rend = g.GetComponent<Renderer>();
+            rend.sharedMaterial = s_baseMat;
+            s_block.SetColor("_BaseColor", Color.Lerp(HeadColor, TailColor, Mathf.Clamp01(idx / 8f)));
+            rend.SetPropertyBlock(s_block);
 
             return g;
         }

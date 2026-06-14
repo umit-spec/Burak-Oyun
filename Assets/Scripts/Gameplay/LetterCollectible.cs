@@ -14,6 +14,7 @@ namespace BurakOyun.Gameplay
         private bool collected;
         private bool isTarget;
         private float bobPhase;
+        private float spawnY;  // letterHeight'i Update'in üzerine yazmasını önler (K-3)
 
         public void Init(char letter, LetterSpawner spawner, bool target = false)
         {
@@ -22,13 +23,13 @@ namespace BurakOyun.Gameplay
             collected = false;
             isTarget  = target;
             bobPhase  = Random.Range(0f, Mathf.PI * 2f);
+            spawnY    = transform.position.y; // pool'dan her çıkışta taze Y
 
             if (label != null) label.text = letter.ToString();
 
             var glow = GetComponentInChildren<LetterGlow>(true);
             if (glow != null) glow.SetColor(LetterGlow.LetterColor(letter));
 
-            // Hedef harf biraz daha büyük başlar
             transform.localScale = target ? Vector3.one * 1.18f : Vector3.one;
         }
 
@@ -41,20 +42,25 @@ namespace BurakOyun.Gameplay
 
         private void Update()
         {
+            // Dönüş animasyonu
             transform.Rotate(0f, 55f * Time.deltaTime, 0f);
 
-            bobPhase += Time.deltaTime * 2.2f;
-            float bob = Mathf.Sin(bobPhase) * 0.1f;
-            var pos = transform.position;
-            pos.y = 0.85f + bob;
-            transform.position = pos;
-
+            // Hedef harf nabzı (P-3: görsel-only işlemler LateUpdate'e taşındı ancak
+            // scale animasyonu rotasyonla aynı frekansta tutmak için Update'te kaldı)
             if (isTarget)
             {
-                // Hedef harf nabız gibi büyüyüp küçülür
                 float pulse = 1.18f + 0.06f * Mathf.Sin(Time.time * 3.5f);
                 transform.localScale = Vector3.one * pulse;
             }
+        }
+
+        private void LateUpdate()
+        {
+            // Bob animasyonu LateUpdate'te (P-3): fizik/rendering son aşamada
+            bobPhase += Time.deltaTime * 2.2f;
+            var pos = transform.position;
+            pos.y = spawnY + Mathf.Sin(bobPhase) * 0.1f; // spawnY kullan, 1f sabitini değil (K-3)
+            transform.position = pos;
         }
     }
 }
