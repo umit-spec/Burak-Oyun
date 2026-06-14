@@ -126,6 +126,25 @@ namespace BurakOyun.Audio
             'Z' => 117f, _   => 262f,
         };
 
+        public static AudioClip CreateCrash(float duration = 0.45f)
+        {
+            int sr = 44100;
+            int samples = (int)(sr * duration);
+            var clip = AudioClip.Create("Crash", samples, 1, sr, false);
+            float[] data = new float[samples];
+            for (int i = 0; i < samples; i++)
+            {
+                float t = (float)i / sr;
+                float env = Mathf.Pow(1f - t / duration, 2f); // hızlı sönme
+                float noise = (Random.value * 2f - 1f) * 0.35f;
+                float freq = Mathf.Max(40f, 160f - 300f * t);  // inen çarpma tonu
+                float tone = Mathf.Sin(2f * Mathf.PI * freq * t) * 0.45f;
+                data[i] = (noise + tone) * env;
+            }
+            clip.SetData(data, 0);
+            return clip;
+        }
+
         public static AudioClip CreateBackgroundMusic(float bpm = 100f)
         {
             int sampleRate = 44100;

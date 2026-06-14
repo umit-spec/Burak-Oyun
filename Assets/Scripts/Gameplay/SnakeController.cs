@@ -121,6 +121,11 @@ namespace BurakOyun.Gameplay
         {
             if (body.Count == 0 || board == null) return;
             transform.position = board.CellToWorld(HeadCell) + Vector3.up * 0.5f;
+            if (direction != Vector2Int.zero)
+            {
+                float yaw = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
+                transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            }
         }
 
         private void Die()

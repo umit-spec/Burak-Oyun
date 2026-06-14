@@ -16,20 +16,23 @@ namespace BurakOyun.UI
         [SerializeField] private TMP_Text progressText;
         [SerializeField] private TMP_Text starsText;
         [SerializeField] private TMP_Text feedbackText;
-        [SerializeField] private TMP_Text highScoreText;   // "En İyi: ★ N"
+        [SerializeField] private TMP_Text highScoreText;
+        [SerializeField] private TMP_Text targetHintText;   // "Ara: U"
         [SerializeField] private Button pauseButton;
         [SerializeField] private Button soundButton;
-        [SerializeField] private TMP_Text soundButtonLabel; // "🔊" / "🔇"
+        [SerializeField] private TMP_Text soundButtonLabel;
 
         [Header("Paneller")]
         [SerializeField] private GameObject startPanel;
         [SerializeField] private GameObject completePanel;
         [SerializeField] private GameObject pausePanel;
         [SerializeField] private GameObject gameOverPanel;
-        [SerializeField] private TMP_Text meaningText;   // "ELMA = 🍎"
+        [SerializeField] private TMP_Text meaningText;
+        [SerializeField] private TMP_Text gameOverProgressText;
 
-        [Header("Canvas")]
-        [SerializeField] private Canvas mainCanvas; // floating text parent
+        [Header("Efektler")]
+        [SerializeField] private Image deathFlash;          // tam ekran kırmızı flash
+        [SerializeField] private Canvas mainCanvas;
 
         [Header("Renkler")]
         [SerializeField] private Color collectedColor = new Color(1f, 0.72f, 0.1f);
@@ -66,7 +69,9 @@ namespace BurakOyun.UI
             ShowComplete(false);
             ShowPause(false);
             ShowGameOver(false);
-            if (feedbackText != null) feedbackText.text = "";
+            if (feedbackText    != null) feedbackText.text = "";
+            if (targetHintText  != null) targetHintText.text = "";
+            if (deathFlash      != null) deathFlash.gameObject.SetActive(false);
             UpdateHighScore(SaveManager.BestStars);
         }
 
@@ -91,7 +96,26 @@ namespace BurakOyun.UI
         public void ShowStart(bool show)    { if (startPanel    != null) startPanel.SetActive(show); }
         public void ShowComplete(bool show) { if (completePanel != null) completePanel.SetActive(show); }
         public void ShowPause(bool show)    { if (pausePanel    != null) pausePanel.SetActive(show); }
-        public void ShowGameOver(bool show) { if (gameOverPanel != null) gameOverPanel.SetActive(show); }
+
+        public void ShowGameOver(bool show)
+        {
+            if (gameOverPanel != null) gameOverPanel.SetActive(show);
+
+            if (show && gameOverProgressText != null && wordManager != null)
+            {
+                string word = wordManager.Word;
+                int idx     = wordManager.CurrentIndex;
+                var sb      = new System.Text.StringBuilder();
+                for (int i = 0; i < word.Length; i++)
+                {
+                    if (i < idx)
+                        sb.Append($"<color=#FFBB00>{word[i]}</color> ");
+                    else
+                        sb.Append("<color=#FF4444>×</color> ");
+                }
+                gameOverProgressText.text = sb.ToString().TrimEnd();
+            }
+        }
 
         public void UpdateHighScore(int best)
         {
@@ -101,6 +125,27 @@ namespace BurakOyun.UI
         public void UpdateSoundButton(bool soundOn)
         {
             if (soundButtonLabel != null) soundButtonLabel.text = soundOn ? "♪" : "✕";
+        }
+
+        public void ShowHint(string msg) => ShowFeedback(msg, 1.2f);
+
+        public void TriggerDeathFlash() => StartCoroutine(FlashDeath());
+
+        private IEnumerator FlashDeath()
+        {
+            if (deathFlash == null) yield break;
+            deathFlash.gameObject.SetActive(true);
+            Color c = new Color(0.85f, 0.05f, 0.05f, 0.6f);
+            deathFlash.color = c;
+            float elapsed = 0f;
+            while (elapsed < 0.5f)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                c.a = Mathf.Lerp(0.6f, 0f, elapsed / 0.5f);
+                deathFlash.color = c;
+                yield return null;
+            }
+            deathFlash.gameObject.SetActive(false);
         }
 
         private void HandleCorrect(char letter, int index)
@@ -115,6 +160,7 @@ namespace BurakOyun.UI
         private void HandleComplete()
         {
             ShowFeedback("HARİKA!");
+            if (targetHintText != null) targetHintText.text = "";
             if (meaningText != null)
             {
                 string m = wordManager.WordData != null ? wordManager.WordData.meaning : "";
@@ -128,42 +174,50 @@ namespace BurakOyun.UI
             if (starsText != null) starsText.text = "★ " + stars;
         }
 
-        private void ShowFeedback(string msg)
+        private void ShowFeedback(string msg, float overrideDuration = -1f)
         {
             if (feedbackText == null) return;
             feedbackText.text = msg;
-            feedbackTimer = feedbackDuration;
-            feedbackScale = 1.4f;
+            feedbackTimer     = overrideDuration > 0 ? overrideDuration : feedbackDuration;
+            feedbackScale     = 1.4f;
         }
 
         private void RefreshProgress()
         {
-            if (progressText == null) return;
+            if (wordManager == null) return;
             string word = wordManager.Word;
-            int idx = wordManager.CurrentIndex;
-            var sb = new System.Text.StringBuilder();
-            for (int i = 0; i < word.Length; i++)
+            int idx     = wordManager.CurrentIndex;
+
+            if (progressText != null)
             {
-                Color c = i < idx ? collectedColor : pendingColor;
-                sb.Append($"<color=#{ColorUtility.ToHtmlStringRGB(c)}>{word[i]}</color> ");
+                var sb = new System.Text.StringBuilder();
+                for (int i = 0; i < word.Length; i++)
+                {
+                    Color c = i < idx ? collectedColor : pendingColor;
+                    sb.Append($"<color=#{ColorUtility.ToHtmlStringRGB(c)}>{word[i]}</color> ");
+                }
+                progressText.text = sb.ToString().TrimEnd();
             }
-            progressText.text = sb.ToString().TrimEnd();
+
+            // Hedef harf ipucu
+            if (targetHintText != null && idx < word.Length)
+                targetHintText.text = $"Ara: <b>{word[idx]}</b>";
         }
 
         private void SpawnFloatingText(string text, Color color)
         {
             if (mainCanvas == null) return;
-            var go = new GameObject("FloatingTxt");
+            var go  = new GameObject("FloatingTxt");
             go.transform.SetParent(mainCanvas.transform, false);
             var tmp = go.AddComponent<TextMeshProUGUI>();
-            tmp.text = text;
-            tmp.fontSize = 52;
+            tmp.text      = text;
+            tmp.fontSize  = 52;
             tmp.fontStyle = FontStyles.Bold;
-            tmp.color = color;
+            tmp.color     = color;
             tmp.alignment = TextAlignmentOptions.Center;
             var rt = tmp.rectTransform;
-            rt.sizeDelta = new Vector2(200f, 80f);
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.45f);
+            rt.sizeDelta       = new Vector2(200f, 80f);
+            rt.anchorMin       = rt.anchorMax = new Vector2(0.5f, 0.45f);
             rt.anchoredPosition = Vector2.zero;
             StartCoroutine(AnimateFloat(rt, tmp));
         }
@@ -171,14 +225,14 @@ namespace BurakOyun.UI
         private IEnumerator AnimateFloat(RectTransform rt, TextMeshProUGUI tmp)
         {
             float duration = 1.1f;
-            float elapsed = 0f;
-            Vector2 start = rt.anchoredPosition;
+            float elapsed  = 0f;
+            Vector2 start  = rt.anchoredPosition;
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
-                float t = elapsed / duration;
+                float t  = elapsed / duration;
                 rt.anchoredPosition = start + Vector2.up * (120f * t);
-                tmp.alpha = 1f - t;
+                tmp.alpha           = 1f - t;
                 yield return null;
             }
             Destroy(rt.gameObject);

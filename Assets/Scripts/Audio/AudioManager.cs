@@ -14,6 +14,7 @@ namespace BurakOyun.Audio
         [SerializeField] private AudioClip dingClip;
         [SerializeField] private AudioClip boingClip;
         [SerializeField] private AudioClip applauseClip;
+        [SerializeField] private AudioClip deathClip;
 
         private bool sfxMuted;
         private bool musicMuted;
@@ -23,6 +24,7 @@ namespace BurakOyun.Audio
             if (dingClip == null)     dingClip     = SfxGenerator.CreateDing();
             if (boingClip == null)    boingClip    = SfxGenerator.CreateBoing();
             if (applauseClip == null) applauseClip = SfxGenerator.CreateApplause();
+            if (deathClip == null)    deathClip    = SfxGenerator.CreateCrash();
             if (musicSource != null && musicSource.clip == null)
                 musicSource.clip = SfxGenerator.CreateBackgroundMusic();
 
@@ -72,6 +74,8 @@ namespace BurakOyun.Audio
             if (voiceSource != null) voiceSource.mute  = sfxMuted;
             if (musicSource != null) musicSource.mute  = musicMuted;
         }
+
+        public void PlayDeath() => Play(sfxSource, deathClip);
 
         private void HandleCorrect(char letter, int index)
         {

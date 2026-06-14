@@ -60,19 +60,19 @@ namespace BurakOyun.Gameplay
             }
 
             Shuffle(cells);
-            Spawn(target, cells[0]);
+            Spawn(target, cells[0], isTarget: true);
             for (int i = 1; i <= config.decoyCount && i < cells.Count; i++)
-                Spawn(PickDecoy(target), cells[i]);
+                Spawn(PickDecoy(target), cells[i], isTarget: false);
         }
 
-        private void Spawn(char letter, Vector2Int cell)
+        private void Spawn(char letter, Vector2Int cell, bool isTarget = false)
         {
             LetterCollectible item = pool.Count > 0
                 ? pool.Dequeue()
                 : Instantiate(letterPrefab, transform);
             item.gameObject.SetActive(true);
             item.transform.position = board.CellToWorld(cell) + Vector3.up * letterHeight;
-            item.Init(letter, this);
+            item.Init(letter, this, isTarget);
             active.Add(item);
             letterCells[item] = cell;
         }

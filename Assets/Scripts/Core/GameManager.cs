@@ -46,18 +46,26 @@ namespace BurakOyun.Core
                 Debug.LogError("[GameManager] StartGame: kritik referans eksik — Sahneyi Kur menüsünü yeniden çalıştırın.");
                 return;
             }
+            CancelInvoke();
             Current = State.Playing;
             Time.timeScale = 1f;
             wordManager.ResetWord();
             if (snakeTail != null) snakeTail.ClearSegments();
             snake.ResetToStart();
-            snake.IsMoving = true;
+            snake.IsMoving = false; // HAZIR? gecikmesi sonrası başlar
             spawner.StartSpawning();
             ui.ShowStart(false);
             ui.ShowComplete(false);
             ui.ShowPause(false);
             ui.ShowGameOver(false);
             ui.UpdateHighScore(SaveManager.BestStars);
+            ui.ShowHint("HAZIR?");
+            Invoke(nameof(BeginMoving), 1.2f);
+        }
+
+        private void BeginMoving()
+        {
+            if (Current == State.Playing) snake.IsMoving = true;
         }
 
         public void Replay() => StartGame();
@@ -108,10 +116,15 @@ namespace BurakOyun.Core
         {
             if (Current != State.Playing) return;
             Current = State.GameOver;
+            CancelInvoke(nameof(BeginMoving));
             spawner.StopAndClear();
-            if (cameraFollow != null) cameraFollow.Shake(0.3f, 0.15f);
-            ui.ShowGameOver(true);
+            if (audioManager != null) audioManager.PlayDeath();
+            ui.TriggerDeathFlash();
+            if (cameraFollow != null) cameraFollow.Shake(0.35f, 0.18f);
+            Invoke(nameof(ShowGameOverPanel), 0.6f); // flash bittikten sonra panel çık
         }
+
+        private void ShowGameOverPanel() => ui.ShowGameOver(true);
 
         private void StopSnake() => snake.IsMoving = false;
 
