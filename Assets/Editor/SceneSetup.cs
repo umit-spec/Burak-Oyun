@@ -272,6 +272,14 @@ namespace BurakOyun.Editor
         [MenuItem("BurakOyun/3 — Sahneyi Kur (Tüm Objeler)", priority = 3)]
         public static void SetupScene()
         {
+            if (EditorApplication.isPlaying)
+            {
+                EditorUtility.DisplayDialog("Hata",
+                    "Play Mode'da çalışmaz!\n\nÖnce Play'i durdurun (▶ butonu), sonra tekrar çalıştırın.",
+                    "Tamam");
+                return;
+            }
+
             string tmpFontDir = System.IO.Path.Combine(Application.dataPath,
                 "TextMesh Pro", "Resources", "Fonts & Materials");
             bool tmpReady = System.IO.Directory.Exists(tmpFontDir)
@@ -283,6 +291,11 @@ namespace BurakOyun.Editor
                 "Yine de devam etmek istiyor musunuz?",
                 "Devam Et", "İptal"))
                 return;
+
+            // Sahnedeki tüm mevcut objeleri temizle
+            var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            foreach (var root in activeScene.GetRootGameObjects())
+                Object.DestroyImmediate(root);
 
             SetupURP();
             CreateAssets();
