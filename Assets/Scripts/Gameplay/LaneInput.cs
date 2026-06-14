@@ -4,34 +4,21 @@ using UnityEngine.EventSystems;
 
 namespace BurakOyun.Gameplay
 {
-    /// Input soyutlaması: klavye (PC) + dokunmatik (Android).
-    /// Sadece yılan hareket ediyorken (Playing state) input okur.
-    /// UI üzerindeki dokunmalar hiçbir zaman oyun inputu olarak işlenmez.
+    /// 4-yönlü giriş: klavye (W/A/S/D + ok tuşları) ve dokunmatik kaydırma.
+    /// Menü / duraklatma / oyun-bitti durumunda input okunmaz; UI butonları çalışsın.
     [RequireComponent(typeof(SnakeController))]
     public class LaneInput : MonoBehaviour
     {
-        [SerializeField] private float swipeThreshold = 0.08f;
+        [SerializeField] private float swipeThreshold = 0.06f;
 
-        public int ConsumeLaneChange()
-        {
-            int dir = pendingDir;
-            pendingDir = 0;
-            return dir;
-        }
-
-        private int pendingDir;
+        private SnakeController snake;
         private Vector2 touchStart;
         private bool touchStartedOverUI;
-        private SnakeController snake;
 
-        private void Awake()
-        {
-            snake = GetComponent<SnakeController>();
-        }
+        private void Awake() => snake = GetComponent<SnakeController>();
 
         private void Update()
         {
-            // Menü, pause veya WordComplete durumunda input okuma — UI butonları çalışsın
             if (snake != null && !snake.IsMoving) return;
             ReadKeyboard();
             ReadTouch();
@@ -41,10 +28,15 @@ namespace BurakOyun.Gameplay
         {
             var kb = Keyboard.current;
             if (kb == null) return;
-            if (kb.leftArrowKey.wasPressedThisFrame || kb.aKey.wasPressedThisFrame)
-                pendingDir = -1;
+
+            if      (kb.upArrowKey.wasPressedThisFrame    || kb.wKey.wasPressedThisFrame)
+                snake.SetDirection(Vector2Int.up);
+            else if (kb.downArrowKey.wasPressedThisFrame  || kb.sKey.wasPressedThisFrame)
+                snake.SetDirection(Vector2Int.down);
+            else if (kb.leftArrowKey.wasPressedThisFrame  || kb.aKey.wasPressedThisFrame)
+                snake.SetDirection(Vector2Int.left);
             else if (kb.rightArrowKey.wasPressedThisFrame || kb.dKey.wasPressedThisFrame)
-                pendingDir = 1;
+                snake.SetDirection(Vector2Int.right);
         }
 
         void ReadTouch()
@@ -58,7 +50,6 @@ namespace BurakOyun.Gameplay
             {
                 touchStart = ts.primaryTouch.position.ReadValue();
                 int fingerId = (int)ts.primaryTouch.touchId.ReadValue();
-                // UI üstündeyse bu touch'u oyun inputu sayma
                 touchStartedOverUI = IsOverUI(fingerId);
             }
             else if (phase == UnityEngine.InputSystem.TouchPhase.Ended)
@@ -67,10 +58,20 @@ namespace BurakOyun.Gameplay
 
                 Vector2 end = ts.primaryTouch.position.ReadValue();
                 float dx = end.x - touchStart.x;
-                float threshold = Screen.width * swipeThreshold;
-                pendingDir = Mathf.Abs(dx) >= threshold
-                    ? (dx > 0 ? 1 : -1)
-                    : (touchStart.x < Screen.width * 0.5f ? -1 : 1);
+                float dy = end.y - touchStart.y;
+                float minSwipe = Screen.width * swipeThreshold;
+
+                if (Mathf.Abs(dx) < minSwipe && Mathf.Abs(dy) < minSwipe)
+                {
+                    touchStartedOverUI = false;
+                    return;
+                }
+
+                if (Mathf.Abs(dx) >= Mathf.Abs(dy))
+                    snake.SetDirection(dx > 0 ? Vector2Int.right : Vector2Int.left);
+                else
+                    snake.SetDirection(dy > 0 ? Vector2Int.up : Vector2Int.down);
+
                 touchStartedOverUI = false;
             }
         }
@@ -78,9 +79,7 @@ namespace BurakOyun.Gameplay
         private static bool IsOverUI(int fingerId)
         {
             if (EventSystem.current == null) return false;
-            // Touch pointer check (Android)
             if (EventSystem.current.IsPointerOverGameObject(fingerId)) return true;
-            // Mouse/editor fallback
             return EventSystem.current.IsPointerOverGameObject();
         }
     }

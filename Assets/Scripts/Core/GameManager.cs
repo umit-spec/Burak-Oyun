@@ -18,7 +18,7 @@ namespace BurakOyun.Core
         [SerializeField] private CameraFollow cameraFollow;
         [SerializeField] private float completePauseDelay = 3f;
 
-        public enum State { Menu, Playing, Paused, WordComplete }
+        public enum State { Menu, Playing, Paused, WordComplete, GameOver }
         public State Current { get; private set; } = State.Menu;
 
         private void OnEnable()
@@ -27,6 +27,7 @@ namespace BurakOyun.Core
             wordManager.OnCorrectLetter += HandleCorrect;
             wordManager.OnWrongLetter   += HandleWrong;
             wordManager.OnWordComplete  += HandleWordComplete;
+            if (snake != null) snake.OnDied += HandleDied;
         }
 
         private void OnDisable()
@@ -35,6 +36,7 @@ namespace BurakOyun.Core
             wordManager.OnCorrectLetter -= HandleCorrect;
             wordManager.OnWrongLetter   -= HandleWrong;
             wordManager.OnWordComplete  -= HandleWordComplete;
+            if (snake != null) snake.OnDied -= HandleDied;
         }
 
         public void StartGame()
@@ -47,13 +49,14 @@ namespace BurakOyun.Core
             Current = State.Playing;
             Time.timeScale = 1f;
             wordManager.ResetWord();
+            if (snakeTail != null) snakeTail.ClearSegments();
             snake.ResetToStart();
             snake.IsMoving = true;
-            if (snakeTail != null) snakeTail.ClearSegments();
             spawner.StartSpawning();
             ui.ShowStart(false);
             ui.ShowComplete(false);
             ui.ShowPause(false);
+            ui.ShowGameOver(false);
             ui.UpdateHighScore(SaveManager.BestStars);
         }
 
@@ -85,8 +88,8 @@ namespace BurakOyun.Core
 
         private void HandleCorrect(char letter, int index)
         {
+            snake.Grow();
             snake.AddSpeedBoost();
-            if (snakeTail != null) snakeTail.AddSegment();
         }
 
         private void HandleWrong(char letter) => snake.ApplySlowdown();
@@ -99,6 +102,15 @@ namespace BurakOyun.Core
             ui.UpdateHighScore(SaveManager.BestStars);
             if (cameraFollow != null) cameraFollow.Shake(0.5f, 0.2f);
             Invoke(nameof(StopSnake), completePauseDelay);
+        }
+
+        private void HandleDied()
+        {
+            if (Current != State.Playing) return;
+            Current = State.GameOver;
+            spawner.StopAndClear();
+            if (cameraFollow != null) cameraFollow.Shake(0.3f, 0.15f);
+            ui.ShowGameOver(true);
         }
 
         private void StopSnake() => snake.IsMoving = false;
@@ -122,6 +134,9 @@ namespace BurakOyun.Core
                     CancelInvoke(nameof(StopSnake));
                     ReturnToMenu();
                     break;
+                case State.GameOver:
+                    ReturnToMenu();
+                    break;
                 case State.Menu:
                     Application.Quit();
                     break;
@@ -137,6 +152,7 @@ namespace BurakOyun.Core
             ui.ShowStart(true);
             ui.ShowComplete(false);
             ui.ShowPause(false);
+            ui.ShowGameOver(false);
         }
     }
 }

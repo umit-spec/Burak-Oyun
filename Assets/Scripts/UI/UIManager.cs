@@ -25,6 +25,7 @@ namespace BurakOyun.UI
         [SerializeField] private GameObject startPanel;
         [SerializeField] private GameObject completePanel;
         [SerializeField] private GameObject pausePanel;
+        [SerializeField] private GameObject gameOverPanel;
         [SerializeField] private TMP_Text meaningText;   // "ELMA = 🍎"
 
         [Header("Canvas")]
@@ -64,6 +65,7 @@ namespace BurakOyun.UI
             ShowStart(true);
             ShowComplete(false);
             ShowPause(false);
+            ShowGameOver(false);
             if (feedbackText != null) feedbackText.text = "";
             UpdateHighScore(SaveManager.BestStars);
         }
@@ -89,6 +91,7 @@ namespace BurakOyun.UI
         public void ShowStart(bool show)    { if (startPanel    != null) startPanel.SetActive(show); }
         public void ShowComplete(bool show) { if (completePanel != null) completePanel.SetActive(show); }
         public void ShowPause(bool show)    { if (pausePanel    != null) pausePanel.SetActive(show); }
+        public void ShowGameOver(bool show) { if (gameOverPanel != null) gameOverPanel.SetActive(show); }
 
         public void UpdateHighScore(int best)
         {

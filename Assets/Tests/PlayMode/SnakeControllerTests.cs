@@ -18,89 +18,154 @@ namespace BurakOyun.Tests.PlayMode
             f.SetValue(target, value);
         }
 
-        static GameConfig MakeConfig(float speed = 4f, float slowdown = 0.5f)
+        static GameConfig MakeConfig(int w = 10, int h = 10, float tick = 0.02f)
         {
             var cfg = ScriptableObject.CreateInstance<GameConfig>();
-            cfg.forwardSpeed = speed;
-            cfg.slowdownFactor = slowdown;
-            cfg.slowdownDuration = 2f;
-            cfg.laneWidth = 2.5f;
-            cfg.laneChangeSpeed = 8f;
+            cfg.gridWidth        = w;
+            cfg.gridHeight       = h;
+            cfg.cellSize         = 1.5f;
+            cfg.tickInterval     = tick;
+            cfg.minTickInterval  = 0.01f;
+            cfg.decoyCount       = 2;
+            cfg.decoyAlphabet    = "ABC";
             return cfg;
         }
 
-        // ── Test 1: Yavaşlama yokken hız tam forwardSpeed ───────────────────
-        [UnityTest]
-        public IEnumerator CurrentSpeed_IsNormal_WithoutSlowdown()
+        static (SnakeController snake, GridBoard board, GameObject snakeGo) MakeSnake(GameConfig cfg)
         {
-            var go = new GameObject("Snake");
-            go.SetActive(false);
-            go.AddComponent<BoxCollider>();
+            var boardGo = new GameObject("Board");
+            boardGo.SetActive(false);
+            var board = boardGo.AddComponent<GridBoard>();
+            SetPrivate(board, "config", cfg);
+            boardGo.SetActive(true);
 
-            var snake = go.AddComponent<SnakeController>();
-            SetPrivate(snake, "config", MakeConfig(speed: 5f, slowdown: 0.5f));
-
-            go.SetActive(true);
-            yield return null;
-
-            Assert.AreEqual(5f, snake.CurrentSpeed, 0.001f,
-                "Yavaşlama yokken hız forwardSpeed'e eşit olmalı");
-
-            Object.Destroy(go);
-            yield return null;
-        }
-
-        // ── Test 2: ApplySlowdown sonrası hız azalır ─────────────────────────
-        [UnityTest]
-        public IEnumerator CurrentSpeed_IsReduced_AfterApplySlowdown()
-        {
-            var go = new GameObject("SnakeSlow");
-            go.SetActive(false);
-            go.AddComponent<BoxCollider>();
-
-            var snake = go.AddComponent<SnakeController>();
-            var cfg = MakeConfig(speed: 4f, slowdown: 0.75f);
+            var snakeGo = new GameObject("Snake");
+            snakeGo.SetActive(false);
+            var snake = snakeGo.AddComponent<SnakeController>();
             SetPrivate(snake, "config", cfg);
+            SetPrivate(snake, "board", board);
+            snakeGo.SetActive(true);
 
-            go.SetActive(true);
-            yield return null;
-
-            snake.ApplySlowdown();
-
-            Assert.AreEqual(cfg.forwardSpeed * cfg.slowdownFactor, snake.CurrentSpeed, 0.001f,
-                "ApplySlowdown sonrası hız forwardSpeed * slowdownFactor olmalı");
-
-            Object.Destroy(go);
-            yield return null;
+            return (snake, board, snakeGo);
         }
 
-        // ── Test 3: ResetToStart → spawn pozisyonuna döner (X=0, Z=spawnZ) ──
+        // ── Test 1: ResetToStart baş hücresini ızgaranın içine koyar ─────────
         [UnityTest]
-        public IEnumerator ResetToStart_ResetsToSpawnPosition()
+        public IEnumerator ResetToStart_HeadIsInsideGrid()
         {
-            var go = new GameObject("SnakeReset");
-            go.SetActive(false);
-            go.AddComponent<BoxCollider>();
-
-            var snake = go.AddComponent<SnakeController>();
-            SetPrivate(snake, "config", MakeConfig());
-
-            // Spawn pozisyonunu kur; SetActive Awake'i tetikler ve spawnPosition'ı yakalar
-            go.transform.position = new Vector3(0f, 1f, 5f);
-            go.SetActive(true);
+            var cfg = MakeConfig();
+            var (snake, board, snakeGo) = MakeSnake(cfg);
             yield return null;
-
-            // Yılanın ilerleyişini simüle et
-            go.transform.position = new Vector3(2.5f, 1f, 42f);
 
             snake.ResetToStart();
 
-            var pos = go.transform.position;
-            Assert.AreEqual(0f, pos.x, 0.001f, "ResetToStart sonrası X = 0 olmalı");
-            Assert.AreEqual(5f, pos.z, 0.001f, "ResetToStart başlangıç Z'sine dönmeli");
-            Assert.AreEqual(1f, pos.y, 0.001f, "ResetToStart Y pozisyonunu korumalı");
+            Assert.IsTrue(board.InBounds(snake.HeadCell),
+                "ResetToStart sonrası baş hücresi ızgara sınırları içinde olmalı");
 
-            Object.Destroy(go);
+            Object.Destroy(snakeGo);
+            Object.Destroy(board.gameObject);
+            yield return null;
+        }
+
+        // ── Test 2: Başlangıçta gövde 3 hücre ───────────────────────────────
+        [UnityTest]
+        public IEnumerator ResetToStart_BodyHasThreeCells()
+        {
+            var cfg = MakeConfig();
+            var (snake, board, snakeGo) = MakeSnake(cfg);
+            yield return null;
+
+            snake.ResetToStart();
+
+            Assert.AreEqual(3, snake.BodyLength,
+                "ResetToStart sonrası yılan 3 hücre uzunluğunda başlamalı");
+
+            Object.Destroy(snakeGo);
+            Object.Destroy(board.gameObject);
+            yield return null;
+        }
+
+        // ── Test 3: 180° ters yön engellenir ────────────────────────────────
+        [UnityTest]
+        public IEnumerator SetDirection_Prevents_180Reversal()
+        {
+            var cfg = MakeConfig(w: 15, h: 15, tick: 0.5f); // yavaş tick - hareketi kontrol edelim
+            var (snake, board, snakeGo) = MakeSnake(cfg);
+            yield return null;
+
+            snake.ResetToStart();
+            // Başlangıç yönü (0,1) = yukarı
+            // Aşağı (0,-1) gitmek istiyoruz → 180° → bloke
+            var headBefore = snake.HeadCell;
+
+            snake.IsMoving = false; // tick çalıştırma
+            snake.SetDirection(Vector2Int.down); // 180° → bloke olmalı
+
+            // queuedDir'i reflection ile kontrol et
+            var f = typeof(SnakeController).GetField("queuedDir",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            var queued = (Vector2Int)f.GetValue(snake);
+
+            // hasPending false ise yön kabul edilmedi
+            var pf = typeof(SnakeController).GetField("hasPending",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            bool hasPending = (bool)pf.GetValue(snake);
+
+            Assert.IsFalse(hasPending,
+                "180° ters yön SetDirection tarafından reddedilmeli");
+
+            Object.Destroy(snakeGo);
+            Object.Destroy(board.gameObject);
+            yield return null;
+        }
+
+        // ── Test 4: Grow() → bir sonraki tickte gövde uzar ─────────────────
+        [UnityTest]
+        public IEnumerator Grow_IncreasesBodyLength()
+        {
+            var cfg = MakeConfig(w: 15, h: 15, tick: 0.03f);
+            var (snake, board, snakeGo) = MakeSnake(cfg);
+            yield return null;
+
+            snake.ResetToStart();
+            snake.IsMoving = true;
+            int before = snake.BodyLength; // 3
+
+            snake.Grow();
+            yield return new WaitForSeconds(cfg.tickInterval * 2f);
+
+            Assert.Greater(snake.BodyLength, before,
+                "Grow() çağrısından sonra gövde uzunluğu artmalı");
+
+            Object.Destroy(snakeGo);
+            Object.Destroy(board.gameObject);
+            yield return null;
+        }
+
+        // ── Test 5: Duvar çarpışması OnDied tetikler ve IsMoving = false ────
+        [UnityTest]
+        public IEnumerator WallCollision_FiresOnDied()
+        {
+            // 5x5 küçük ızgara, hızlı tick
+            var cfg = MakeConfig(w: 5, h: 5, tick: 0.03f);
+            var (snake, board, snakeGo) = MakeSnake(cfg);
+            yield return null;
+
+            snake.ResetToStart();
+
+            bool diedFired = false;
+            snake.OnDied += () => diedFired = true;
+
+            snake.IsMoving = true;
+            // Başlangıç yönü yukarı (0,1); 5x5 ızgarada y=1'den başlayıp
+            // 4 tick sonra y=5 (sınır dışı)  → ölüm
+            yield return new WaitForSeconds(cfg.tickInterval * 10f);
+
+            Assert.IsTrue(diedFired,  "Duvar çarpışması OnDied tetiklemeli");
+            Assert.IsFalse(snake.IsMoving, "Ölüm sonrası IsMoving false olmalı");
+
+            Object.Destroy(snakeGo);
+            Object.Destroy(board.gameObject);
             yield return null;
         }
     }

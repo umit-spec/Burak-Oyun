@@ -3,62 +3,76 @@ using UnityEngine;
 
 namespace BurakOyun.Gameplay
 {
-    /// Her doğru harfte bir segment eklenir; segmentler birbirini takip eder.
+    /// Izgara gövde segmentleri: SnakeController.BodyCells üzerinden her frame senkronize edilir.
     public class SnakeTail : MonoBehaviour
     {
-        [SerializeField] private float segmentSpacing = 0.65f;
+        [SerializeField] private GridBoard board;
 
-        private readonly List<Transform> segments = new();
-        private static readonly Color HeadColor  = new(0.2f, 0.85f, 0.3f);
-        private static readonly Color TailColor  = new(0.1f, 0.45f, 0.15f);
+        private SnakeController snake;
+        private readonly List<GameObject> segments = new();
+        private readonly List<Vector2Int> cellBuffer = new();
+
+        private static readonly Color HeadColor = new(0.2f, 0.85f, 0.3f);
+        private static readonly Color TailColor  = new(0.05f, 0.4f, 0.12f);
 
         public int Count => segments.Count;
 
-        public void AddSegment()
-        {
-            var seg = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            seg.name = $"Tail_{segments.Count + 1}";
-
-            // Spawn behind last segment (or head)
-            Transform anchor = segments.Count > 0 ? segments[^1] : transform;
-            seg.transform.position = anchor.position - anchor.forward * segmentSpacing;
-            seg.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-
-            float t = Mathf.Clamp01(segments.Count / 8f);
-            float scale = Mathf.Lerp(0.75f, 0.45f, t);
-            seg.transform.localScale = new Vector3(scale, scale, scale);
-
-            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            mat.color = Color.Lerp(HeadColor, TailColor, t);
-            seg.GetComponent<Renderer>().sharedMaterial = mat;
-
-            Object.Destroy(seg.GetComponent<CapsuleCollider>());
-            segments.Add(seg.transform);
-        }
+        private void Awake() => snake = GetComponent<SnakeController>();
 
         public void ClearSegments()
         {
             foreach (var s in segments)
-                if (s != null) Destroy(s.gameObject);
+                if (s != null) Destroy(s);
             segments.Clear();
         }
 
         private void LateUpdate()
         {
-            if (segments.Count == 0) return;
+            if (snake == null || board == null) return;
 
-            Transform leader = transform;
-            foreach (var seg in segments)
+            // Body hücrelerini topla (baş hariç)
+            cellBuffer.Clear();
+            bool first = true;
+            foreach (var c in snake.BodyCells)
             {
-                if (seg == null) continue;
-                Vector3 dir = leader.position - seg.position;
-                float dist = dir.magnitude;
-                if (dist > segmentSpacing)
-                    seg.position += dir.normalized * (dist - segmentSpacing);
-                if (dir.sqrMagnitude > 0.001f)
-                    seg.forward = dir.normalized;
-                leader = seg;
+                if (first) { first = false; continue; }
+                cellBuffer.Add(c);
             }
+
+            // Segment sayısını hücre sayısına eşitle
+            while (segments.Count < cellBuffer.Count)
+                segments.Add(CreateSegment(segments.Count));
+            while (segments.Count > cellBuffer.Count)
+            {
+                if (segments[^1] != null) Destroy(segments[^1]);
+                segments.RemoveAt(segments.Count - 1);
+            }
+
+            // Konumları güncelle
+            for (int i = 0; i < segments.Count; i++)
+            {
+                if (segments[i] != null)
+                    segments[i].transform.position = board.CellToWorld(cellBuffer[i]) + Vector3.up * 0.45f;
+            }
+        }
+
+        private GameObject CreateSegment(int idx)
+        {
+            var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            g.name = $"Tail_{idx + 1}";
+
+            var col = g.GetComponent<BoxCollider>();
+            if (col != null) Destroy(col);
+
+            float sc = board != null ? board.Cell * 0.82f : 1.2f;
+            g.transform.localScale = Vector3.one * sc;
+
+            float t = Mathf.Clamp01(idx / 8f);
+            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            mat.color = Color.Lerp(HeadColor, TailColor, t);
+            g.GetComponent<Renderer>().sharedMaterial = mat;
+
+            return g;
         }
 
         private void OnDestroy() => ClearSegments();

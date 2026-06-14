@@ -4,30 +4,26 @@ using BurakOyun.Data;
 
 namespace BurakOyun.Gameplay
 {
-    /// <summary>
-    /// Dalga mantığı: her dalgada 1 DOĞRU harf + 1-2 çeldirici, 3 şeride rastgele.
-    /// Doğru harf her dalgada garantili → çocuk asla kilitlenmez.
-    /// Object pooling ile harfler geri dönüştürülür.
-    /// </summary>
+    /// Izgara tabanlı harf spawn: rastgele boş hücreye koy, yılan topladığında sil.
     public class LetterSpawner : MonoBehaviour
     {
         [SerializeField] private GameConfig config;
         [SerializeField] private WordManager wordManager;
         [SerializeField] private SnakeController snake;
+        [SerializeField] private GridBoard board;
         [SerializeField] private LetterCollectible letterPrefab;
-        [SerializeField] private float letterHeight = 1f;
+        [SerializeField] private float letterHeight = 0.75f;
 
         private readonly List<LetterCollectible> active = new();
+        private readonly Dictionary<LetterCollectible, Vector2Int> letterCells = new();
         private readonly Queue<LetterCollectible> pool = new();
-        private float spawnTimer;
         private bool running;
-
-        public System.Action<LetterCollectible> OnLetterCollected;
+        private float spawnDelay;
 
         public void StartSpawning()
         {
-            running = true;
-            spawnTimer = 1.5f; // ilk dalga çabuk gelsin, çocuk beklemesin
+            running    = true;
+            spawnDelay = 0.8f;
         }
 
         public void StopAndClear()
@@ -38,68 +34,80 @@ namespace BurakOyun.Gameplay
 
         private void Update()
         {
-            if (!running) return;
+            if (!running || wordManager.IsComplete) return;
+            if (active.Count > 0) return;
 
-            spawnTimer -= Time.deltaTime;
-            if (spawnTimer <= 0f && !wordManager.IsComplete)
-            {
-                SpawnWave();
-                spawnTimer = config.spawnInterval;
-            }
-
-            // Arkada kalanları geri havuza al
-            for (int i = active.Count - 1; i >= 0; i--)
-            {
-                if (snake.transform.position.z - active[i].transform.position.z > config.despawnBehind)
-                    Despawn(active[i]);
-            }
+            spawnDelay -= Time.deltaTime;
+            if (spawnDelay <= 0f) SpawnWave();
         }
 
         private void SpawnWave()
         {
+            if (wordManager.IsComplete) return;
+
+            var occupied = new HashSet<Vector2Int>(snake.BodyCells);
+            foreach (var cell in letterCells.Values) occupied.Add(cell);
+
             char target = wordManager.TargetLetter;
-            var lanes = new List<int> { -1, 0, 1 };
-            Shuffle(lanes);
+            int total   = 1 + config.decoyCount;
+            var cells   = new List<Vector2Int>(total);
 
-            Spawn(target, lanes[0]);
-            for (int i = 0; i < config.decoyCount && i + 1 < lanes.Count; i++)
-                Spawn(PickDecoy(target), lanes[i + 1]);
+            for (int i = 0; i < total; i++)
+            {
+                var c = board.RandomEmpty(occupied);
+                cells.Add(c);
+                occupied.Add(c);
+            }
+
+            Shuffle(cells);
+            Spawn(target, cells[0]);
+            for (int i = 1; i <= config.decoyCount && i < cells.Count; i++)
+                Spawn(PickDecoy(target), cells[i]);
         }
 
-        private char PickDecoy(char target)
+        private void Spawn(char letter, Vector2Int cell)
         {
-            string decoyPool = config.decoyAlphabet;
-            char c;
-            do { c = decoyPool[Random.Range(0, decoyPool.Length)]; } while (c == target);
-            return c;
-        }
-
-        private void Spawn(char letter, int lane)
-        {
-            LetterCollectible item = pool.Count > 0 ? pool.Dequeue() : Instantiate(letterPrefab, transform);
+            LetterCollectible item = pool.Count > 0
+                ? pool.Dequeue()
+                : Instantiate(letterPrefab, transform);
             item.gameObject.SetActive(true);
-            item.transform.position = new Vector3(
-                lane * config.laneWidth, letterHeight,
-                snake.transform.position.z + config.spawnDistance);
+            item.transform.position = board.CellToWorld(cell) + Vector3.up * letterHeight;
             item.Init(letter, this);
             active.Add(item);
+            letterCells[item] = cell;
         }
 
         public void NotifyCollected(LetterCollectible item)
         {
-            OnLetterCollected?.Invoke(item);
+            bool wasTarget = item.Letter == wordManager.TargetLetter;
             wordManager.Submit(item.Letter);
             Despawn(item);
+
+            if (wasTarget && running && !wordManager.IsComplete)
+            {
+                // Kalan çeldiricileri temizle, biraz bekleyip yeni dalga aç
+                for (int i = active.Count - 1; i >= 0; i--) Despawn(active[i]);
+                spawnDelay = 0.5f;
+            }
         }
 
         private void Despawn(LetterCollectible item)
         {
             active.Remove(item);
+            letterCells.Remove(item);
             item.gameObject.SetActive(false);
             pool.Enqueue(item);
         }
 
-        private static void Shuffle(List<int> list)
+        private char PickDecoy(char target)
+        {
+            string alphabet = config.decoyAlphabet;
+            char c;
+            do { c = alphabet[Random.Range(0, alphabet.Length)]; } while (c == target);
+            return c;
+        }
+
+        private static void Shuffle<T>(List<T> list)
         {
             for (int i = list.Count - 1; i > 0; i--)
             {

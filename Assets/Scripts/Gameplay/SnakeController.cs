@@ -1,71 +1,132 @@
+using System.Collections.Generic;
 using UnityEngine;
 using BurakOyun.Data;
 
 namespace BurakOyun.Gameplay
 {
-    /// <summary>
-    /// Yılan sabit hızla ileri akar; her doğru harfte hız biraz artar (zorluk eğrisi).
-    /// Yanlış harfte kısa süre yavaşlar — asla durmaz, asla ölmez.
-    /// </summary>
     [RequireComponent(typeof(LaneInput))]
     public class SnakeController : MonoBehaviour
     {
         [SerializeField] private GameConfig config;
+        [SerializeField] private GridBoard board;
 
-        private LaneInput input;
-        private int currentLane;
-        private float slowdownTimer;
+        public event System.Action OnDied;
+
+        private readonly LinkedList<Vector2Int> body = new();
+        private Vector2Int direction  = new(0, 1);
+        private Vector2Int queuedDir  = new(0, 1);
+        private bool hasPending;
         private bool isMoving;
-        private Vector3 spawnPosition;
-        private float speedBoost; // her doğru harfte 0.3 artar, max %60 boost
+        private bool growNext;
+        private float tickTimer;
+        private float slowdownTimer;
+        private int boostTicks;
 
-        public bool IsMoving { get => isMoving; set => isMoving = value; }
-        public float CurrentSpeed
+        public bool IsMoving
         {
-            get
-            {
-                float speed = config.forwardSpeed + speedBoost;
-                return slowdownTimer > 0f ? speed * config.slowdownFactor : speed;
-            }
+            get => isMoving;
+            set { isMoving = value; if (value) tickTimer = 0f; }
         }
 
-        private void Awake()
+        public Vector2Int HeadCell => body.Count > 0 ? body.First.Value : new(config.gridWidth / 2, 2);
+        public IEnumerable<Vector2Int> BodyCells => body;
+        public int BodyLength => body.Count;
+
+        public void ResetToStart()
         {
-            input = GetComponent<LaneInput>();
-            spawnPosition = transform.position;
+            body.Clear();
+            int cx = config.gridWidth  / 2;
+            int cy = config.gridHeight / 4;
+            body.AddFirst(new Vector2Int(cx, cy));
+            body.AddLast(new Vector2Int(cx, cy - 1));
+            body.AddLast(new Vector2Int(cx, cy - 2));
+            direction     = new Vector2Int(0, 1);
+            queuedDir     = direction;
+            hasPending    = false;
+            growNext      = false;
+            boostTicks    = 0;
+            slowdownTimer = 0f;
+            tickTimer     = 0f;
+            SyncVisuals();
+        }
+
+        public void SetDirection(Vector2Int dir)
+        {
+            // 180° dönüş yasağı
+            if (dir + direction == Vector2Int.zero) return;
+            queuedDir  = dir;
+            hasPending = true;
+        }
+
+        public void Grow() => growNext = true;
+
+        public void AddSpeedBoost()
+        {
+            boostTicks    = Mathf.Min(boostTicks + 3, 15);
+            slowdownTimer = 0f;
+        }
+
+        public void ApplySlowdown()
+        {
+            slowdownTimer = 2f;
+            boostTicks    = 0;
         }
 
         private void Update()
         {
             if (!isMoving) return;
 
+            float interval = config.tickInterval;
+            if      (boostTicks > 0)      interval = Mathf.Max(interval * 0.65f, config.minTickInterval);
+            else if (slowdownTimer > 0f)  interval = interval * 1.5f;
+
             if (slowdownTimer > 0f) slowdownTimer -= Time.deltaTime;
 
-            int dir = input.ConsumeLaneChange();
-            if (dir != 0)
-                currentLane = Mathf.Clamp(currentLane + dir, -1, 1);
-
-            Vector3 pos = transform.position;
-            pos.z += CurrentSpeed * Time.deltaTime;
-            float targetX = currentLane * config.laneWidth;
-            pos.x = Mathf.MoveTowards(pos.x, targetX, config.laneChangeSpeed * Time.deltaTime);
-            transform.position = pos;
+            tickTimer -= Time.deltaTime;
+            if (tickTimer <= 0f)
+            {
+                tickTimer = interval;
+                Tick();
+            }
         }
 
-        public void ApplySlowdown() => slowdownTimer = config.slowdownDuration;
-
-        public void AddSpeedBoost()
+        private void Tick()
         {
-            float maxBoost = config.forwardSpeed * 0.6f;
-            speedBoost = Mathf.Min(speedBoost + 0.3f, maxBoost);
+            if (hasPending) { direction = queuedDir; hasPending = false; }
+            if (boostTicks > 0) boostTicks--;
+
+            var newHead = HeadCell + direction;
+
+            if (!board.InBounds(newHead)) { Die(); return; }
+
+            // Kendi kendine çarpışma: kuyruk bir adım sonra kayacak → yeni baş oraya girebilir
+            var tail = body.Last.Value;
+            foreach (var cell in body)
+            {
+                if (cell == newHead)
+                {
+                    if (cell == tail && !growNext) continue;
+                    Die(); return;
+                }
+            }
+
+            body.AddFirst(newHead);
+            if (growNext) growNext = false;
+            else          body.RemoveLast();
+
+            SyncVisuals();
         }
 
-        public void ResetToStart()
+        private void SyncVisuals()
         {
-            currentLane = 0;
-            slowdownTimer = 0f;
-            speedBoost = 0f;
-            transform.position = new Vector3(0f, spawnPosition.y, spawnPosition.z);
+            if (body.Count == 0 || board == null) return;
+            transform.position = board.CellToWorld(HeadCell) + Vector3.up * 0.5f;
+        }
+
+        private void Die()
+        {
+            isMoving = false;
+            OnDied?.Invoke();
         }
     }
 }
